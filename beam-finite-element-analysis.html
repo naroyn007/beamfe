@@ -1,0 +1,2663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BEAM// Finite Beam Analysis</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --navy-deep:#0A1F3A;
+    --navy-mid:#0F2A4D;
+    --navy-panel:#102D53;
+    --blue-line:#BFDCFA;
+    --blue-line-dim:rgba(191,220,250,0.35);
+    --blue-line-faint:rgba(191,220,250,0.12);
+    --cyan:#6FD6E8;
+    --amber:#F2A93B;
+    --green:#5FCB8D;
+    --red:#EF6B62;
+    --paper:#EAF2FB;
+    --mono:'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+    --head:'Barlow Condensed', 'Arial Narrow', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      linear-gradient(var(--blue-line-faint) 1px, transparent 1px) 0 0/28px 28px,
+      linear-gradient(90deg, var(--blue-line-faint) 1px, transparent 1px) 0 0/28px 28px,
+      var(--navy-deep);
+    color:var(--paper);
+    font-family:var(--mono);
+    min-height:100vh;
+    padding:20px;
+  }
+  @font-face{ }
+  .wrap{max-width:1320px;margin:0 auto;}
+
+  header{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    border-bottom:2px solid var(--blue-line-dim);
+    padding-bottom:14px;margin-bottom:22px;flex-wrap:wrap;gap:10px;
+  }
+  .brand{display:flex;align-items:baseline;gap:12px;}
+  .brand-mark{
+    font-family:var(--head);font-weight:700;font-size:34px;letter-spacing:2px;
+    color:var(--paper);
+  }
+  .brand-mark span{color:var(--cyan);}
+  .brand-sub{
+    font-size:11px;letter-spacing:3px;color:var(--blue-line-dim);text-transform:uppercase;
+  }
+  .rev{font-size:11px;color:var(--blue-line-dim);letter-spacing:1px;text-align:right;}
+  .rev b{color:var(--amber);}
+
+  .grid{display:grid;grid-template-columns:380px 1fr;gap:20px;align-items:start;}
+  @media (max-width:980px){ .grid{grid-template-columns:1fr;} }
+
+  .panel{
+    background:linear-gradient(180deg, var(--navy-panel), var(--navy-mid));
+    border:1px solid var(--blue-line-dim);
+    border-radius:2px;
+    position:relative;
+  }
+  .panel::before{
+    content:'';position:absolute;top:0;left:0;right:0;height:2px;
+    background:linear-gradient(90deg,var(--cyan),transparent 60%);
+  }
+  .panel-head{
+    padding:12px 16px;border-bottom:1px solid var(--blue-line-dim);
+    font-family:var(--head);letter-spacing:2px;text-transform:uppercase;font-size:13px;color:var(--cyan);
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .panel-body{padding:16px;}
+  .stack{display:flex;flex-direction:column;gap:14px;}
+
+  label{font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--blue-line-dim);display:block;margin-bottom:4px;}
+  input[type=number], input[type=text], select{
+    width:100%;background:var(--navy-deep);border:1px solid var(--blue-line-dim);
+    color:var(--paper);padding:7px 8px;font-family:var(--mono);font-size:13px;border-radius:2px;
+  }
+  input:focus, select:focus{outline:1px solid var(--cyan);border-color:var(--cyan);}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  .row-auto{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;}
+
+  .field-note{font-size:10px;color:var(--blue-line-dim);margin-top:3px;}
+
+  .adjust-note{
+    font-size:11px;color:var(--amber);background:rgba(242,169,59,0.08);
+    border:1px solid rgba(242,169,59,0.35);border-radius:2px;
+    padding:7px 10px;margin-bottom:8px;
+  }
+
+  .list-item{
+    border:1px dashed var(--blue-line-dim);padding:10px;border-radius:2px;position:relative;
+    background:rgba(255,255,255,0.015);
+  }
+  .del-btn{
+    background:none;border:1px solid var(--red);color:var(--red);width:22px;height:22px;
+    cursor:pointer;font-size:13px;line-height:1;border-radius:2px;
+  }
+  .add-btn{
+    background:none;border:1px dashed var(--cyan);color:var(--cyan);padding:8px;width:100%;
+    cursor:pointer;font-family:var(--head);letter-spacing:1.5px;text-transform:uppercase;font-size:12px;
+    border-radius:2px;
+  }
+  .add-btn:hover{background:rgba(111,214,232,0.08);}
+  .del-btn:hover{background:rgba(239,107,98,0.12);}
+
+  .section-title{
+    font-family:var(--head);letter-spacing:1.5px;text-transform:uppercase;font-size:12px;
+    color:var(--blue-line);margin:2px 0 2px 0;border-bottom:1px solid var(--blue-line-dim);padding-bottom:6px;
+    display:flex;justify-content:space-between;align-items:center;gap:8px;
+  }
+  .import-btn{
+    background:none;border:1px solid var(--blue-line-dim);color:var(--blue-line);
+    padding:4px 8px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.3px;
+    cursor:pointer;border-radius:2px;text-transform:none;white-space:nowrap;
+  }
+  .import-btn:hover{border-color:var(--cyan);color:var(--cyan);background:rgba(111,214,232,0.08);}
+
+  .run-btn{
+    width:100%;padding:13px;background:var(--cyan);color:var(--navy-deep);border:none;
+    font-family:var(--head);font-weight:700;letter-spacing:2px;text-transform:uppercase;font-size:15px;
+    cursor:pointer;border-radius:2px;
+  }
+  .run-btn:hover{background:#8CE2F0;}
+  .run-btn:active{transform:translateY(1px);}
+
+  .report-btn{
+    width:100%;padding:11px;background:none;color:var(--blue-line);
+    border:1px solid var(--blue-line-dim);
+    font-family:var(--head);font-weight:700;letter-spacing:1.5px;text-transform:uppercase;font-size:13px;
+    cursor:pointer;border-radius:2px;margin-top:8px;
+  }
+  .report-btn:hover{border-color:var(--cyan);color:var(--cyan);background:rgba(111,214,232,0.06);}
+
+  .autosave-banner{
+    max-width:1320px;margin:0 auto 18px;background:linear-gradient(180deg, var(--navy-panel), var(--navy-mid));
+    border:1px solid var(--amber);border-radius:2px;padding:12px 16px;
+    display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;
+  }
+  .autosave-banner .ab-text{font-size:12.5px;color:var(--paper);}
+  .autosave-banner .ab-text b{color:var(--amber);}
+  .autosave-banner .ab-actions{display:flex;gap:8px;flex-shrink:0;}
+  .ab-btn{
+    padding:7px 14px;font-family:var(--head);letter-spacing:1px;text-transform:uppercase;font-size:12px;
+    cursor:pointer;border-radius:2px;
+  }
+  .ab-restore{background:var(--cyan);color:var(--navy-deep);border:none;}
+  .ab-restore:hover{background:#8CE2F0;}
+  .ab-dismiss{background:none;border:1px solid var(--blue-line-dim);color:var(--blue-line);}
+  .ab-dismiss:hover{border-color:var(--red);color:var(--red);}
+
+  select option{background:var(--navy-deep);}
+
+  .main-stack{display:flex;flex-direction:column;gap:18px;}
+  canvas{width:100%;display:block;background:transparent;}
+  .diagram-wrap{padding:14px 16px 18px;}
+  .diagram-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--blue-line-dim);margin-top:6px;letter-spacing:0.5px;}
+  .diagram-meta b{color:var(--amber);}
+
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--blue-line-faint);}
+  th{font-family:var(--head);letter-spacing:1px;text-transform:uppercase;font-size:11px;color:var(--blue-line-dim);font-weight:400;}
+  tr:last-child td{border-bottom:none;}
+  .tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10.5px;letter-spacing:0.5px;font-family:var(--mono);}
+  .tag-pass{background:rgba(95,203,141,0.15);color:var(--green);border:1px solid rgba(95,203,141,0.4);}
+  .tag-fail{background:rgba(239,107,98,0.15);color:var(--red);border:1px solid rgba(239,107,98,0.4);}
+  .tag-warn{background:rgba(242,169,59,0.15);color:var(--amber);border:1px solid rgba(242,169,59,0.4);}
+  .tag-neutral{background:rgba(191,220,250,0.1);color:var(--blue-line);border:1px solid var(--blue-line-dim);}
+
+  .summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--blue-line-faint);}
+  @media (max-width:820px){ .summary-grid{grid-template-columns:repeat(2,1fr);} }
+  .summary-cell{background:var(--navy-mid);padding:16px;}
+  .summary-cell .lbl{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--blue-line-dim);margin-bottom:6px;}
+  .summary-cell .val{font-family:var(--head);font-size:26px;color:var(--paper);}
+  .summary-cell .val small{font-size:13px;color:var(--blue-line-dim);font-family:var(--mono);}
+  .summary-cell .sub{font-size:11px;color:var(--blue-line-dim);margin-top:4px;}
+  .summary-cell.fail .val{color:var(--red);}
+  .summary-cell.pass .val{color:var(--green);}
+
+  .empty-msg{padding:40px 20px;text-align:center;color:var(--blue-line-dim);font-size:13px;line-height:1.8;}
+  .empty-msg b{color:var(--cyan);}
+
+  .legend{display:flex;gap:16px;font-size:11px;color:var(--blue-line-dim);flex-wrap:wrap;}
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .swatch{width:14px;height:3px;display:inline-block;}
+
+  footer{margin-top:30px;text-align:center;font-size:10.5px;color:var(--blue-line-dim);letter-spacing:1px;padding-bottom:10px;}
+
+  ::-webkit-scrollbar{width:8px;height:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--blue-line-dim);border-radius:4px;}
+
+  .howto{margin:2px 0;padding-left:16px;font-size:11px;color:var(--blue-line);line-height:1.9;}
+  .howto b{color:var(--cyan);}
+
+  .quick-add{display:flex;gap:6px;flex-wrap:wrap;align-items:end;}
+
+  .schematic-field{display:flex;flex-direction:column;gap:2px;}
+  .schematic-field label{font-size:9px;letter-spacing:0.5px;text-transform:uppercase;color:var(--blue-line-dim);white-space:nowrap;}
+  .schematic-field input{
+    width:84px;background:var(--navy-deep);border:1px solid var(--blue-line-dim);
+    color:var(--paper);padding:5px 6px;font-family:var(--mono);font-size:12px;border-radius:2px;
+  }
+  .schematic-field input:focus{outline:1px solid var(--cyan);border-color:var(--cyan);}
+
+  .udl-mode-toggle{display:flex;border:1px solid var(--blue-line-dim);border-radius:2px;overflow:hidden;}
+  .udl-mode-btn{
+    background:var(--navy-deep);border:none;color:var(--blue-line-dim);
+    padding:5px 8px;font-family:var(--mono);font-size:11px;cursor:pointer;white-space:nowrap;
+  }
+  .udl-mode-btn+.udl-mode-btn{border-left:1px solid var(--blue-line-dim);}
+  .udl-mode-btn.active{background:var(--cyan);color:var(--navy-deep);font-weight:bold;}
+  .udl-mode-btn:not(.active):hover{color:var(--cyan);}
+  .qa-btn{
+    background:none;border:1px solid var(--blue-line-dim);color:var(--blue-line);
+    padding:5px 10px;font-family:var(--mono);font-size:11px;cursor:pointer;border-radius:2px;
+    letter-spacing:0.3px;white-space:nowrap;
+  }
+  .qa-btn:hover{border-color:var(--cyan);color:var(--cyan);background:rgba(111,214,232,0.08);}
+
+  #cvSchematic{cursor:pointer;}
+
+  .float-popup{
+    position:fixed;z-index:1000;
+    background:linear-gradient(180deg, var(--navy-panel), var(--navy-mid));
+    border:1px solid var(--cyan);border-radius:3px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.5), 0 0 0 1px rgba(111,214,232,0.15);
+    width:250px;font-family:var(--mono);
+  }
+  .float-popup .fp-head{
+    padding:9px 12px;border-bottom:1px solid var(--blue-line-dim);
+    font-family:var(--head);letter-spacing:1.5px;text-transform:uppercase;font-size:12px;color:var(--cyan);
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .float-popup .fp-close{cursor:pointer;color:var(--blue-line-dim);font-size:15px;line-height:1;}
+  .float-popup .fp-close:hover{color:var(--red);}
+  .float-popup .fp-body{padding:12px;display:flex;flex-direction:column;gap:10px;}
+  .float-popup .fp-actions{display:flex;gap:8px;padding:0 12px 12px;}
+  .fp-save{
+    flex:1;background:var(--cyan);color:var(--navy-deep);border:none;padding:8px;
+    font-family:var(--head);font-weight:700;letter-spacing:1px;text-transform:uppercase;font-size:12px;
+    cursor:pointer;border-radius:2px;
+  }
+  .fp-save:hover{background:#8CE2F0;}
+  .fp-delete{
+    background:none;border:1px solid var(--red);color:var(--red);padding:8px 12px;
+    font-family:var(--head);letter-spacing:1px;text-transform:uppercase;font-size:12px;
+    cursor:pointer;border-radius:2px;
+  }
+  .fp-delete:hover{background:rgba(239,107,98,0.12);}
+
+  .ctx-menu{
+    position:fixed;z-index:1000;min-width:190px;
+    background:linear-gradient(180deg, var(--navy-panel), var(--navy-mid));
+    border:1px solid var(--blue-line-dim);border-radius:3px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.5);overflow:hidden;
+  }
+  .ctx-menu .ctx-title{
+    padding:8px 12px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;
+    color:var(--blue-line-dim);border-bottom:1px solid var(--blue-line-faint);
+  }
+  .ctx-item{
+    padding:10px 12px;font-size:12.5px;color:var(--paper);cursor:pointer;
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .ctx-item:hover{background:rgba(111,214,232,0.1);color:var(--cyan);}
+  .ctx-item .ctx-count{color:var(--blue-line-dim);font-size:11px;}
+
+  .table-overlay-bg{
+    position:fixed;inset:0;background:rgba(5,12,24,0.65);z-index:1100;
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .table-overlay{
+    background:linear-gradient(180deg, var(--navy-panel), var(--navy-mid));
+    border:1px solid var(--cyan);border-radius:4px;max-width:720px;width:100%;
+    max-height:80vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,0.6);
+  }
+  .table-overlay .to-head{
+    padding:14px 18px;border-bottom:1px solid var(--blue-line-dim);
+    display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;
+    background:var(--navy-panel);
+  }
+  .table-overlay .to-title{font-family:var(--head);letter-spacing:2px;text-transform:uppercase;font-size:14px;color:var(--cyan);}
+  .table-overlay .fp-close{cursor:pointer;color:var(--blue-line-dim);font-size:18px;}
+  .table-overlay .fp-close:hover{color:var(--red);}
+  .table-overlay .to-body{padding:14px 18px;}
+  .to-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .to-table th{font-family:var(--head);letter-spacing:1px;text-transform:uppercase;font-size:10.5px;color:var(--blue-line-dim);font-weight:400;text-align:left;padding:6px 6px;}
+  .to-table td{padding:5px 6px;border-top:1px solid var(--blue-line-faint);}
+  .to-table input, .to-table select{padding:5px 6px;font-size:12px;}
+  .to-del{background:none;border:1px solid var(--red);color:var(--red);width:24px;height:24px;cursor:pointer;border-radius:2px;}
+  .to-del:hover{background:rgba(239,107,98,0.12);}
+  .to-add{margin-top:12px;}
+
+  /* ===== PRINT REPORT ===== */
+  .print-report{display:none;}
+  .pr-page{background:#ffffff;color:#111827;font-family:'IBM Plex Mono','SFMono-Regular',Consolas,monospace;
+    width:100%;max-width:800px;margin:0 auto;padding:36px 40px;}
+  .pr-titleblock{display:flex;justify-content:space-between;align-items:flex-start;
+    border-bottom:2px solid #111827;padding-bottom:12px;margin-bottom:16px;}
+  .pr-titleblock h1{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:22px;font-weight:700;
+    letter-spacing:1px;margin:0;color:#111827;text-transform:uppercase;}
+  .pr-titleblock .pr-sub{font-size:11px;color:#4b5563;margin-top:3px;}
+  .pr-titleblock .pr-meta{text-align:right;font-size:11px;color:#4b5563;line-height:1.7;}
+  .pr-titleblock .pr-meta b{color:#111827;}
+  .pr-infogrid{width:100%;font-size:11.5px;border-collapse:collapse;margin-bottom:22px;}
+  .pr-infogrid td{padding:4px 0;}
+  .pr-infogrid td.k{color:#6b7280;width:110px;}
+  .pr-infogrid td.v{border-bottom:0.5px solid #d1d5db;padding-left:6px;}
+  .pr-section-title{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:13px;font-weight:700;
+    letter-spacing:0.5px;text-transform:uppercase;color:#111827;margin:22px 0 8px;
+    border-bottom:1px solid #111827;padding-bottom:4px;}
+  .pr-section-title:first-of-type{margin-top:0;}
+  .pr-table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:4px;}
+  .pr-table th{text-align:left;font-size:9.5px;letter-spacing:0.5px;text-transform:uppercase;
+    color:#6b7280;font-weight:400;padding:5px 6px;border-bottom:1px solid #111827;}
+  .pr-table td{padding:5px 6px;border-bottom:0.5px solid #d1d5db;}
+  .pr-tag{display:inline-block;padding:2px 8px;border-radius:9px;font-size:10px;font-weight:500;}
+  .pr-tag-pass{background:#dcfce7;color:#166534;}
+  .pr-tag-fail{background:#fee2e2;color:#991b1b;}
+  .pr-tag-warn{background:#fef3c7;color:#92400e;}
+  .pr-diagrams{display:flex;flex-direction:column;gap:14px;margin-bottom:6px;}
+  .pr-diagram-cap{font-size:10px;color:#6b7280;text-align:center;margin-top:2px;}
+  .pr-footer{border-top:1px solid #d1d5db;padding-top:10px;margin-top:26px;font-size:9.5px;color:#9ca3af;line-height:1.6;}
+  .pr-sig{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:26px;}
+  .pr-sig div{border-top:1px solid #111827;padding-top:4px;font-size:10px;color:#6b7280;}
+  .pr-page-break{height:0;}
+  .pr-watermark{display:none;}
+
+  @media print{
+    body{background:#fff;padding:0;}
+    .wrap, #floatPopup, #ctxMenu, #tableOverlayRoot, #licenseGate{display:none !important;}
+    .print-report{display:block !important;}
+    .pr-page{padding:0;max-width:none;}
+    .pr-page-break{page-break-before:always;break-before:page;}
+    .pr-table, .pr-diagrams>div, .pr-titleblock, .pr-infogrid{page-break-inside:avoid;break-inside:avoid;}
+    .pr-watermark{
+      display:block;position:fixed;top:44%;left:50%;
+      transform:translate(-50%,-50%) rotate(-32deg);
+      font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:54px;font-weight:700;
+      color:rgba(17,24,39,0.075);letter-spacing:3px;white-space:nowrap;
+      z-index:9999;pointer-events:none;
+    }
+    @page{margin:14mm;}
+  }
+
+  /* ===== LICENSE GATE ===== */
+  .license-gate{
+    position:fixed;inset:0;z-index:2000;
+    background:
+      linear-gradient(var(--blue-line-faint) 1px, transparent 1px) 0 0/28px 28px,
+      linear-gradient(90deg, var(--blue-line-faint) 1px, transparent 1px) 0 0/28px 28px,
+      var(--navy-deep);
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .license-box{
+    width:100%;max-width:380px;text-align:center;
+    background:linear-gradient(180deg, var(--navy-panel), var(--navy-mid));
+    border:1px solid var(--blue-line-dim);border-radius:3px;padding:32px 28px;
+  }
+  .license-brand{font-family:var(--head);font-weight:700;font-size:30px;letter-spacing:2px;color:var(--paper);}
+  .license-brand span{color:var(--cyan);}
+  .license-sub{font-size:12px;color:var(--blue-line-dim);letter-spacing:0.5px;margin:6px 0 22px;}
+  .license-box input[type=text], .license-box input[type=email]{
+    width:100%;background:var(--navy-deep);border:1px solid var(--blue-line-dim);
+    color:var(--paper);padding:11px 12px;font-family:var(--mono);font-size:14px;border-radius:2px;
+    text-align:center;letter-spacing:1px;
+  }
+  .license-box input:focus{outline:1px solid var(--cyan);border-color:var(--cyan);}
+  .license-unlock-btn{
+    width:100%;margin-top:12px;padding:12px;background:var(--cyan);color:var(--navy-deep);border:none;
+    font-family:var(--head);font-weight:700;letter-spacing:2px;text-transform:uppercase;font-size:14px;
+    cursor:pointer;border-radius:2px;
+  }
+  .license-unlock-btn:hover{background:#8CE2F0;}
+  .license-unlock-btn:disabled{opacity:0.5;cursor:default;}
+  .license-msg{min-height:18px;font-size:11.5px;margin-top:12px;}
+  .license-msg.err{color:var(--red);}
+  .license-msg.ok{color:var(--green);}
+  .license-msg.pending{color:var(--blue-line-dim);}
+  .license-note{font-size:10.5px;color:var(--blue-line-dim);margin-top:16px;line-height:1.6;}
+  .license-note a{color:var(--cyan);cursor:pointer;text-decoration:underline;}
+  .license-note a:hover{color:#8CE2F0;}
+
+  .license-footer{
+    max-width:1320px;margin:16px auto 0;text-align:right;font-size:11px;color:var(--blue-line-dim);
+  }
+  .license-footer b{color:var(--cyan);}
+  .license-footer a{color:var(--blue-line);cursor:pointer;text-decoration:underline;}
+  .license-footer a:hover{color:var(--red);}
+</style>
+</head>
+<body>
+
+<div id="licenseGate" class="license-gate">
+  <div class="license-box">
+    <div class="license-brand">BEAM<span>//</span>FE</div>
+
+    <div id="licenseLoginView">
+      <div class="license-sub">Enter your license key to continue</div>
+      <input type="text" id="licenseKeyInput" placeholder="e.g. BEAM-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false">
+      <button class="license-unlock-btn" id="licenseUnlockBtn">Unlock ▸</button>
+      <div class="license-msg" id="licenseMsg"></div>
+      <div class="license-note">Don't have a key? <a id="showTrialSignup">Start a free 30-day trial</a>, or <a href="https://naroyn8.gumroad.com/l/ivfqt" target="_blank" rel="noopener">buy a full license</a>.</div>
+    </div>
+
+    <div id="licenseTrialView" style="display:none;">
+      <div class="license-sub">Start your free 30-day trial</div>
+      <input type="email" id="trialEmailInput" placeholder="you@company.com" autocomplete="off" spellcheck="false">
+      <input type="text" id="trialLabelInput" placeholder="Name or company (optional)" autocomplete="off" spellcheck="false" style="margin-top:8px;">
+      <button class="license-unlock-btn" id="trialStartBtn">Start Trial ▸</button>
+      <div class="license-msg" id="trialMsg"></div>
+      <div class="license-note">We'll email you a confirmation link to activate it. One trial per email address. <a id="showLoginView">← Back to license key login</a></div>
+    </div>
+  </div>
+</div>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <div class="brand-mark">BEAM<span>//</span>FE</div>
+      <div class="brand-sub">Finite&nbsp;Element&nbsp;Beam&nbsp;Analysis</div>
+    </div>
+    <div class="rev">SHEET 01 &nbsp;·&nbsp; UNITS <b>METRIC (m / kN / mm / MPa)</b><br>Multi-span &middot; point &amp; distributed loads &middot; tie-down uplift check</div>
+  </header>
+
+  <div id="autosaveBanner"></div>
+
+  <div class="grid">
+
+    <!-- INPUT PANEL -->
+    <div class="panel">
+      <div class="panel-head">Model Input</div>
+      <div class="panel-body stack">
+
+        <div class="stack">
+          <div class="section-title">Project Details</div>
+          <div class="row2">
+            <div><label>Project Name</label><input type="text" id="prjName" placeholder="e.g. 123 Main St Renovation"></div>
+            <div><label>Beam / Member ID</label><input type="text" id="prjBeamId" placeholder="e.g. B-1"></div>
+          </div>
+          <div class="row2">
+            <div><label>Designed By</label><input type="text" id="prjBy" placeholder="Initials or name"></div>
+            <div><label>Checked By</label><input type="text" id="prjChecked" placeholder="Initials or name"></div>
+          </div>
+          <div><label>Date</label><input type="date" id="prjDate"></div>
+        </div>
+
+        <div class="stack">
+          <div class="section-title">Beam Items</div>
+          <div class="field-note">Beam length, tributary width, supports, point loads &amp; distributed loads are all edited directly on the <b style="color:var(--cyan);">schematic</b>, at right:</div>
+          <ul class="howto">
+            <li><b>Double-click</b> an item to edit or delete it</li>
+            <li><b>Double-click</b> empty beam to add a point load there</li>
+            <li><b>Right-click</b> the schematic for a summary table of any category</li>
+          </ul>
+          <div class="field-note" style="margin-top:2px;">TIE-DOWN = anchored, resists uplift &amp; bearing &middot; FREE = bearing only (post/wall, no anchorage — flags if net reaction is uplift)</div>
+        </div>
+
+        <div class="stack">
+          <div class="section-title">Section Properties
+            <button class="import-btn" id="importExcelBtn" type="button">Import from Excel ⬆</button>
+          </div>
+          <input type="file" id="importExcelInput" accept=".xlsx,.xls,.csv" style="display:none;">
+          <div>
+            <label>Saved Beams / Sections</label>
+            <div class="row-auto" style="grid-template-columns:1fr auto;">
+              <select id="sectionLibrarySelect">
+                <option value="">— Select a saved beam —</option>
+              </select>
+              <button class="del-btn" id="clearLibraryBtn" title="Clear all saved beams">✕</button>
+            </div>
+            <div class="field-note" id="libraryEmptyNote">Nothing saved yet — import an Excel file to build this list.</div>
+          </div>
+          <div>
+            <label>Section Name</label>
+            <input type="text" id="sectionName" placeholder="e.g. 45x240 Timber Joist" value="">
+          </div>
+          <div class="row2">
+            <div>
+              <label>Modulus E (MPa)</label>
+              <input type="number" id="propE" value="11000" step="100">
+            </div>
+            <div>
+              <label>Moment of Inertia I (mm⁴)</label>
+              <input type="number" id="propI" value="51840000" step="10000">
+            </div>
+          </div>
+          <div class="field-note">E and I are used for deflection only. Defaults shown ≈ 45×240 mm timber joist, for reference only — enter your actual section.</div>
+        </div>
+
+        <div class="stack">
+          <div class="section-title">Allowables &amp; Limits</div>
+          <div class="row2">
+            <div>
+              <label>Allow. Bending Moment (kN·m)</label>
+              <input type="number" id="allowFb" value="5" step="0.5">
+            </div>
+            <div>
+              <label>Allow. Shear Force (kN)</label>
+              <input type="number" id="allowFv" value="20" step="1">
+            </div>
+          </div>
+          <div class="field-note">Rated capacities (e.g. from a product datasheet, already including its own factor of safety) — compared directly against demand moment/shear, not a stress calculation.</div>
+          <div>
+            <label>Deflection Limit — L /</label>
+            <input type="number" id="deflLimit" value="270" step="10">
+          </div>
+        </div>
+
+        <button class="run-btn" id="runBtn">Run Analysis ▸</button>
+        <button class="report-btn" id="reportBtn">Generate Report (PDF) ⬇</button>
+        <div class="row2" style="margin-top:8px;">
+          <button class="report-btn" id="saveBtn">Save Model ⬇</button>
+          <button class="report-btn" id="loadBtn">Load Model ⬆</button>
+        </div>
+        <input type="file" id="loadFileInput" accept=".json,application/json" style="display:none;">
+      </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="main-stack" id="results">
+      <div class="panel">
+        <div class="panel-head">Beam Schematic</div>
+        <div class="empty-msg">Configure the model at left and press <b>Run Analysis</b> to generate the schematic, diagrams, and summary.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>BEAM//FE — client-side finite element solver (Euler–Bernoulli beam elements, direct stiffness method). For preliminary design use; verify against applicable code &amp; a licensed engineer's stamp.</footer>
+  <div class="license-footer" id="licenseFooter"></div>
+</div>
+
+<div id="floatPopup"></div>
+<div id="ctxMenu"></div>
+<div id="tableOverlayRoot"></div>
+
+<div class="print-report" id="printReport"></div>
+
+
+<script>
+/* ======================= LICENSE GATE ======================= */
+// NOTE: pointing at the PRODUCTION Supabase project — swapped from DEVELOPMENT on go-live.
+// If you ever need to point this back at DEVELOPMENT for testing, its URL was:
+//   https://xhjqnkpsuyzodgnhhuwb.supabase.co
+// All license/trial checks go through Edge Functions below (plain fetch, no SDK needed —
+// they're deployed with verify_jwt:false so no auth header is required to call them).
+const SUPABASE_URL = 'https://swhilchfrytknrbjhrlj.supabase.co';
+const LICENSE_STORAGE_KEY = 'beamfe_license_v1';
+
+let currentLicense = null; // {key, label, plan, verifiedAt}
+
+function getLicenseWatermarkText(){
+  if (!currentLicense || !currentLicense.key) return 'UNLICENSED COPY';
+  if (currentLicense.plan === 'trial') return 'TRIAL VERSION';
+  const tail = currentLicense.key.slice(-4);
+  return (currentLicense.label ? currentLicense.label : 'LICENSED COPY') + '   \u2022   KEY \u2022\u2022\u2022\u2022'+tail;
+}
+
+function showLicenseGate(msg, msgClass){
+  const gate = document.getElementById('licenseGate');
+  if (gate) gate.style.display = 'flex';
+  const loginView = document.getElementById('licenseLoginView');
+  const trialView = document.getElementById('licenseTrialView');
+  if (loginView) loginView.style.display = 'block';
+  if (trialView) trialView.style.display = 'none';
+  const m = document.getElementById('licenseMsg');
+  if (m){ m.textContent = msg||''; m.className = 'license-msg '+(msgClass||''); }
+}
+function hideLicenseGate(){
+  const gate = document.getElementById('licenseGate');
+  if (gate) gate.style.display = 'none';
+}
+
+function renderLicenseFooter(){
+  const el = document.getElementById('licenseFooter');
+  if (!el) return;
+  if (!currentLicense){ el.innerHTML=''; return; }
+  const tail = (currentLicense.key||'').slice(-4);
+  const planTag = currentLicense.plan === 'trial' ? ' <span style="color:var(--amber);">(Trial)</span>' : '';
+  el.innerHTML = 'Licensed to: <b>'+esc(currentLicense.label || 'Registered user')+'</b>'+planTag+' (key \u00b7\u00b7\u00b7\u00b7'+esc(tail)+') &middot; <a id="licenseSignOut">Sign out / change key</a>';
+  const so = document.getElementById('licenseSignOut');
+  if (so) so.addEventListener('click', signOutLicense);
+}
+
+function signOutLicense(){
+  try{ localStorage.removeItem(LICENSE_STORAGE_KEY); }catch(err){}
+  currentLicense = null;
+  renderLicenseFooter();
+  showLicenseGate();
+  const input = document.getElementById('licenseKeyInput');
+  if (input){ input.value=''; input.focus(); }
+}
+
+const EDGE_FN_VERIFY_LICENSE_URL = SUPABASE_URL + '/functions/v1/beamfe-verify-license';
+
+async function verifyLicenseKey(key){
+  try{
+    const res = await fetch(EDGE_FN_VERIFY_LICENSE_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({key})
+    });
+    let body;
+    try{ body = await res.json(); }catch(err){ body = null; }
+    if (!body) return {valid:false, message:'Unexpected response from the license service.'};
+    return body; // {valid, label, plan, message}
+  }catch(err){
+    return {valid:false, message:'Could not reach the license service — check your internet connection and try again.'};
+  }
+}
+
+async function attemptUnlock(key){
+  const btn = document.getElementById('licenseUnlockBtn');
+  const msg = document.getElementById('licenseMsg');
+  key = (key||'').trim();
+  if (!key){ msg.textContent='Enter a license key.'; msg.className='license-msg err'; return; }
+  btn.disabled = true;
+  msg.textContent = 'Checking\u2026'; msg.className = 'license-msg pending';
+  const result = await verifyLicenseKey(key);
+  btn.disabled = false;
+  if (result.valid){
+    currentLicense = {key, label: result.label||null, plan: result.plan||'full', verifiedAt: new Date().toISOString()};
+    try{ localStorage.setItem(LICENSE_STORAGE_KEY, JSON.stringify(currentLicense)); }catch(err){}
+    msg.textContent = ''; msg.className='license-msg';
+    hideLicenseGate();
+    renderLicenseFooter();
+  } else {
+    msg.textContent = result.message || 'Invalid license key.';
+    msg.className = 'license-msg err';
+  }
+}
+
+document.getElementById('licenseUnlockBtn').addEventListener('click', ()=>{
+  attemptUnlock(document.getElementById('licenseKeyInput').value);
+});
+document.getElementById('licenseKeyInput').addEventListener('keydown', (e)=>{
+  if (e.key==='Enter') attemptUnlock(document.getElementById('licenseKeyInput').value);
+});
+
+/* ---- Self-serve trial signup ---- */
+function showTrialView(){
+  document.getElementById('licenseLoginView').style.display = 'none';
+  document.getElementById('licenseTrialView').style.display = 'block';
+  document.getElementById('trialMsg').textContent = '';
+  document.getElementById('trialMsg').className = 'license-msg';
+  document.getElementById('trialEmailInput').focus();
+}
+function showLoginViewGate(){
+  document.getElementById('licenseTrialView').style.display = 'none';
+  document.getElementById('licenseLoginView').style.display = 'block';
+  document.getElementById('licenseMsg').textContent = '';
+  document.getElementById('licenseMsg').className = 'license-msg';
+  document.getElementById('licenseKeyInput').focus();
+}
+document.getElementById('showTrialSignup').addEventListener('click', showTrialView);
+document.getElementById('showLoginView').addEventListener('click', showLoginViewGate);
+
+const EDGE_FN_START_TRIAL_URL = SUPABASE_URL + '/functions/v1/beamfe-start-trial';
+
+async function startTrial(email, label){
+  try{
+    const res = await fetch(EDGE_FN_START_TRIAL_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({email, label: label||null})
+    });
+    let body;
+    try{ body = await res.json(); }catch(err){ body = null; }
+    if (!body) return {success:false, message:'Unexpected response from the trial service.'};
+    return body; // {success, message}
+  }catch(err){
+    return {success:false, message:'Could not reach the trial service — check your internet connection and try again.'};
+  }
+}
+
+async function attemptStartTrial(){
+  const btn = document.getElementById('trialStartBtn');
+  const msg = document.getElementById('trialMsg');
+  const email = document.getElementById('trialEmailInput').value.trim();
+  const label = document.getElementById('trialLabelInput').value.trim();
+  if (!email){ msg.textContent='Enter your email address.'; msg.className='license-msg err'; return; }
+  btn.disabled = true;
+  msg.textContent = 'Sending confirmation email\u2026'; msg.className = 'license-msg pending';
+  const result = await startTrial(email, label);
+  btn.disabled = false;
+  if (result.success){
+    msg.textContent = result.message || 'Check your email to confirm and activate your trial.';
+    msg.className = 'license-msg ok';
+    document.getElementById('trialEmailInput').value = '';
+    document.getElementById('trialLabelInput').value = '';
+  } else {
+    msg.textContent = result.message || 'Could not start a trial with that email.';
+    msg.className = 'license-msg err';
+  }
+}
+document.getElementById('trialStartBtn').addEventListener('click', attemptStartTrial);
+document.getElementById('trialEmailInput').addEventListener('keydown', (e)=>{ if (e.key==='Enter') attemptStartTrial(); });
+document.getElementById('trialLabelInput').addEventListener('keydown', (e)=>{ if (e.key==='Enter') attemptStartTrial(); });
+
+// On load: trust a cached valid license immediately so returning users aren't blocked on a
+// network round trip every time, then silently re-verify in the background — if it turns
+// out to have been revoked/expired since, sign them out and show the gate again.
+(function initLicenseGate(){
+  let cached = null;
+  try{
+    const raw = localStorage.getItem(LICENSE_STORAGE_KEY);
+    if (raw) cached = JSON.parse(raw);
+  }catch(err){ cached = null; }
+
+  if (cached && cached.key){
+    currentLicense = cached;
+    hideLicenseGate();
+    renderLicenseFooter();
+    verifyLicenseKey(cached.key).then(result=>{
+      if (!result.valid){
+        signOutLicense();
+        showLicenseGate(result.message || 'Your license is no longer valid — please re-enter your key.', 'err');
+      } else if (result.label !== cached.label || result.plan !== cached.plan){
+        currentLicense.label = result.label;
+        currentLicense.plan = result.plan||'full';
+        try{ localStorage.setItem(LICENSE_STORAGE_KEY, JSON.stringify(currentLicense)); }catch(err){}
+        renderLicenseFooter();
+      }
+    });
+  } else {
+    showLicenseGate();
+  }
+})();
+
+/* ======================= STATE ======================= */
+let supports = [
+  {pos:0, type:'free'},
+  {pos:6, type:'free'}
+];
+let pointLoads = [
+  {pos:3, mag:3.5}
+];
+let udls = [
+  {start:0, end:6, mode:'line', magStart:3, magEnd:3}
+];
+// beamLengthValue/tribWidthValue are the source of truth (same pattern as the arrays above) —
+// the inputs living on the schematic get recreated every render, so they can't be read before
+// the very first render has ever happened. A DOM change updates the variable; the variable
+// always drives the next analysis and the next render's input value.
+let beamLengthValue = 6;
+let tribWidthValue = 1.2;
+// Single beam-wide UDL input mode — every distributed load uses the same mode, so it's no
+// longer possible to accidentally mix Line and Area entries across different loads (the
+// exact mistake that produces a wrong total load without any error showing up).
+let udlModeGlobal = 'line';
+
+function getBeamLength(){ return beamLengthValue; }
+
+function addSupportDefault(){
+  const L = getBeamLength();
+  supports.push({pos: Math.round((L/2)*10)/10, type:'free'});
+  return supports.length-1;
+}
+function addPointLoadDefault(atPos){
+  const L = getBeamLength();
+  const pos = atPos!==undefined ? Math.round(atPos*10)/10 : Math.round((L/2)*10)/10;
+  pointLoads.push({pos, mag:2});
+  return pointLoads.length-1;
+}
+function addUdlDefault(){
+  const L = getBeamLength();
+  udls.push({start:0, end:L, mode:udlModeGlobal, magStart:2, magEnd:2});
+  return udls.length-1;
+}
+
+/* Pulls every support/point-load/UDL back inside [0, L] when the beam length is shortened
+   past an item's position, instead of leaving it out of range and erroring the model out.
+   Returns true if anything actually moved, so the UI can note it happened. */
+function clampModelToLength(L){
+  let changed = false;
+  const r2 = v => Math.round(v*100)/100;
+
+  supports.forEach(s=>{
+    const c = r2(Math.min(Math.max(s.pos,0), L));
+    if (Math.abs(c-s.pos) > 1e-9){ s.pos = c; changed = true; }
+  });
+  // if clamping pushed two supports onto (or past) the same point, nudge them apart slightly
+  // so the model stays a well-posed two-restraint beam rather than a mechanism
+  const order = supports.map((s,i)=>i).sort((a,b)=>supports[a].pos-supports[b].pos);
+  for (let k=1;k<order.length;k++){
+    const prev = supports[order[k-1]], curr = supports[order[k]];
+    if (curr.pos - prev.pos < 1e-6){
+      const gap = Math.max(0.01, L*0.01);
+      let nudgedCurr = r2(Math.min(L, prev.pos + gap));
+      if (nudgedCurr - prev.pos < 1e-6){
+        // no room to push curr forward (prev already at/near L) — pull prev back instead
+        const nudgedPrev = r2(Math.max(0, curr.pos - gap));
+        if (Math.abs(nudgedPrev-prev.pos) > 1e-9){ prev.pos = nudgedPrev; changed = true; }
+      } else if (Math.abs(nudgedCurr-curr.pos) > 1e-9){
+        curr.pos = nudgedCurr; changed = true;
+      }
+    }
+  }
+
+  pointLoads.forEach(p=>{
+    const c = r2(Math.min(Math.max(p.pos,0), L));
+    if (Math.abs(c-p.pos) > 1e-9){ p.pos = c; changed = true; }
+  });
+
+  udls.forEach(u=>{
+    let s0 = u.start, e0 = u.end;
+    if (s0 > e0){ const t=s0; s0=e0; e0=t; } // fix a reversed span while we're at it
+    s0 = r2(Math.min(Math.max(s0,0), L));
+    e0 = r2(Math.min(Math.max(e0,0), L));
+    if (s0 > e0) s0 = e0;
+    if (Math.abs(s0-u.start) > 1e-9 || Math.abs(e0-u.end) > 1e-9){
+      u.start = s0; u.end = e0; changed = true;
+    }
+  });
+
+  return changed;
+}
+
+/* ======================= FE ENGINE (validated) ======================= */
+function solveBeamFE(length, sup, ptLoads, dloads, E, I){
+  let positions = new Set([0, length]);
+  sup.forEach(s => positions.add(s.pos));
+  ptLoads.forEach(p => positions.add(p.pos));
+  dloads.forEach(u => { positions.add(u.start); positions.add(u.end); });
+  let base = Array.from(positions).sort((a,b)=>a-b);
+  let nodes = new Set(base);
+  const minDiv = 60;
+  const step = length/minDiv;
+  for (let x=0;x<=length+1e-9;x+=step) nodes.add(Math.round(x*1e6)/1e6);
+  let nodeList = Array.from(nodes).sort((a,b)=>a-b).map(x=>Math.round(x*1e6)/1e6);
+  let clean = [nodeList[0]];
+  for (let i=1;i<nodeList.length;i++){
+    if (nodeList[i]-clean[clean.length-1] > 1e-6) clean.push(nodeList[i]);
+  }
+  nodeList = clean;
+  const n = nodeList.length;
+  const ndof = 2*n;
+  let K = Array.from({length:ndof},()=>new Float64Array(ndof));
+  let F = new Float64Array(ndof);
+
+  function loadAtEdges(x1, x2){
+    // dloads span breakpoints are always inserted as mesh nodes (see positions set above), so
+    // an element never straddles a udl's start/end — it's either fully inside or fully outside.
+    let w1=0, w2=0;
+    dloads.forEach(u=>{
+      if (x1 >= u.start-1e-6 && x2 <= u.end+1e-6){
+        const span = u.end-u.start;
+        const t1 = span>1e-9 ? (x1-u.start)/span : 0;
+        const t2 = span>1e-9 ? (x2-u.start)/span : 0;
+        w1 += u.wStart + t1*(u.wEnd-u.wStart);
+        w2 += u.wStart + t2*(u.wEnd-u.wStart);
+      }
+    });
+    return {w1, w2};
+  }
+
+  for (let e=0;e<n-1;e++){
+    const x1=nodeList[e], x2=nodeList[e+1];
+    const Le = x2-x1;
+    const k = (E*I)/Math.pow(Le,3);
+    const ke = [
+      [12*k, 6*Le*k, -12*k, 6*Le*k],
+      [6*Le*k, 4*Le*Le*k, -6*Le*k, 2*Le*Le*k],
+      [-12*k, -6*Le*k, 12*k, -6*Le*k],
+      [6*Le*k, 2*Le*Le*k, -6*Le*k, 4*Le*Le*k]
+    ];
+    const dofs = [2*e, 2*e+1, 2*e+2, 2*e+3];
+    for (let i=0;i<4;i++) for (let j=0;j<4;j++) K[dofs[i]][dofs[j]] += ke[i][j];
+
+    // Trapezoidal distributed load over this element (wStart=w1 at x1, wEnd=w2 at x2), decomposed
+    // into a uniform component (w1) plus a triangular component (0 at x1, w2-w1 at x2), each with
+    // their own standard consistent nodal load formulas — validated against closed-form solutions.
+    const {w1, w2} = loadAtEdges(x1, x2);
+    if (w1 !== 0 || w2 !== 0){
+      const wu = w1, wt = w2 - w1;
+      const fUniform = [-wu*Le/2, -wu*Le*Le/12, -wu*Le/2, wu*Le*Le/12];
+      const R1 = 3*wt*Le/20, R2 = 7*wt*Le/20, M1 = wt*Le*Le/30, M2 = wt*Le*Le/20;
+      const fTri = [-R1, -M1, -R2, M2];
+      const fL = [fUniform[0]+fTri[0], fUniform[1]+fTri[1], fUniform[2]+fTri[2], fUniform[3]+fTri[3]];
+      for (let i=0;i<4;i++) F[dofs[i]] += fL[i];
+    }
+  }
+
+  ptLoads.forEach(p=>{
+    const idx = nodeList.findIndex(x=>Math.abs(x-p.pos)<1e-6);
+    F[2*idx] += -p.P;
+  });
+
+  let restrained = new Array(ndof).fill(false);
+  const supportDofIdx = [];
+  sup.forEach(s=>{
+    const idx = nodeList.findIndex(x=>Math.abs(x-s.pos)<1e-6);
+    restrained[2*idx] = true;
+    supportDofIdx.push({idx, dof:2*idx, pos:s.pos, type:s.type});
+  });
+
+  const freeDofs = [];
+  for (let i=0;i<ndof;i++) if (!restrained[i]) freeDofs.push(i);
+  const nf = freeDofs.length;
+  let Kff = Array.from({length:nf},()=>new Float64Array(nf));
+  let Ff = new Float64Array(nf);
+  for (let i=0;i<nf;i++){
+    Ff[i] = F[freeDofs[i]];
+    for (let j=0;j<nf;j++) Kff[i][j] = K[freeDofs[i]][freeDofs[j]];
+  }
+
+  function solveLinear(A,b){
+    const nn = b.length;
+    const M = [];
+    for (let i=0;i<nn;i++){ M.push(Array.from(A[i]).concat([b[i]])); }
+    for (let col=0; col<nn; col++){
+      let piv = col;
+      for (let r=col+1;r<nn;r++) if (Math.abs(M[r][col])>Math.abs(M[piv][col])) piv=r;
+      const tmp=M[col]; M[col]=M[piv]; M[piv]=tmp;
+      const pv = M[col][col];
+      if (Math.abs(pv) < 1e-12) continue;
+      for (let r=0;r<nn;r++){
+        if (r===col) continue;
+        const factor = M[r][col]/pv;
+        for (let c=col;c<=nn;c++) M[r][c] -= factor*M[col][c];
+      }
+    }
+    const out = new Array(nn);
+    for (let i=0;i<nn;i++) out[i] = M[i][nn] / (M[i][i]||1e-20);
+    return out;
+  }
+
+  const df = nf>0 ? solveLinear(Kff, Ff) : [];
+  let d = new Float64Array(ndof);
+  for (let i=0;i<nf;i++) d[freeDofs[i]] = df[i];
+
+  let Ffull = new Float64Array(ndof);
+  for (let i=0;i<ndof;i++){
+    let sum=0;
+    for (let j=0;j<ndof;j++) sum += K[i][j]*d[j];
+    Ffull[i] = sum;
+  }
+  let reactions = supportDofIdx.map(s=>({
+    pos: s.pos, type: s.type,
+    R: Ffull[s.dof] - F[s.dof]
+  }));
+
+  // deflection lookup array (nodeList/d) for interpolation
+  const defl = nodeList.map((x,i)=>({x, v:d[2*i]}));
+
+  return {nodeList, reactions, defl};
+}
+
+/* Iterative "lift-off" solve for Free (bearing-only, unanchored) supports.
+   A Free support cannot pull the beam down — it can only push up (bearing) or
+   separate entirely (zero reaction) if the net demand there is uplift. We solve
+   with every support pinned, then release any Free support showing net uplift
+   and re-solve, repeating until no active Free support wants to pull down —
+   unless releasing it would leave fewer than 2 active supports (an unstable
+   mechanism), in which case it's kept pinned and the uplift demand is reported
+   as a required tie-down capacity instead. */
+function solveWithLiftoff(Lmm, supMm, ptMm, dMm, E, I){
+  const n = supMm.length;
+  const UPLIFT_TOL = 1e-6; // N
+
+  function solveActive(mask){
+    const idxList = [];
+    for (let i=0;i<n;i++) if (mask[i]) idxList.push(i);
+    const activeSup = idxList.map(i=>supMm[i]);
+    const feResult = solveBeamFE(Lmm, activeSup, ptMm, dMm, E, I);
+    return {feResult, idxList};
+  }
+
+  let activeMask = new Array(n).fill(true);
+  let current = solveActive(activeMask);
+  let fe = current.feResult, activeIdxList = current.idxList;
+
+  const maxIter = n+2;
+  for (let iter=0; iter<maxIter; iter++){
+    let worstIdx=-1, worstR=0;
+    fe.reactions.forEach((r,k)=>{
+      const origIdx = activeIdxList[k];
+      if (supMm[origIdx].type==='free' && r.R < -UPLIFT_TOL && r.R < worstR){
+        worstR = r.R; worstIdx = origIdx;
+      }
+    });
+    if (worstIdx===-1) break; // converged: no active Free support is being pulled down
+    if (activeIdxList.length - 1 < 2) break; // releasing it would make the beam a mechanism
+
+    const trialMask = activeMask.slice();
+    trialMask[worstIdx] = false;
+    const trial = solveActive(trialMask);
+    activeMask = trialMask;
+    fe = trial.feResult; activeIdxList = trial.idxList;
+  }
+
+  const reactions = supMm.map((s,i)=>{
+    if (!activeMask[i]) return {pos:s.pos, type:s.type, R:0, liftedOff:true};
+    const k = activeIdxList.indexOf(i);
+    const r = fe.reactions[k];
+    return {pos:r.pos, type:r.type, R:r.R, liftedOff:false};
+  });
+  return {fe, reactions};
+}
+
+function computeDiagrams(length, sup, ptLoads, dloads, reactions, samplesPerSeg=24){
+  let bp = new Set([0, length]);
+  sup.forEach(s=>bp.add(s.pos));
+  ptLoads.forEach(p=>bp.add(p.pos));
+  dloads.forEach(u=>{bp.add(u.start); bp.add(u.end);});
+  let pts = Array.from(bp).sort((a,b)=>a-b).map(x=>Math.round(x*1e9)/1e9);
+  let clean=[pts[0]];
+  for(let i=1;i<pts.length;i++) if(pts[i]-clean[clean.length-1]>1e-7) clean.push(pts[i]);
+  pts = clean;
+
+  // Which udls actually govern a given segment is decided by the segment's MIDPOINT, never
+  // by its endpoints — an endpoint can be exactly the shared boundary between two back-to-back
+  // udls (e.g. one ending at x and the next starting at x), and testing membership AT that
+  // point would count both loads there, corrupting the running V/M sum from that point on.
+  // The midpoint is never a shared boundary, so it always picks the one correct udl per side.
+  function activeUdlsForSegment(a,b){
+    const mid=(a+b)/2;
+    return dloads.filter(u=> mid>u.start-1e-9 && mid<u.end+1e-9);
+  }
+  function wAtXForList(list, x){
+    let w=0;
+    list.forEach(u=>{
+      const span=u.end-u.start;
+      const t = span>1e-9 ? (x-u.start)/span : 0;
+      w += u.wStart + t*(u.wEnd-u.wStart);
+    });
+    return w;
+  }
+  function pointLoadAt(x){ let s=0; ptLoads.forEach(p=>{ if (Math.abs(p.pos-x)<1e-7) s+=p.P; }); return s; }
+  function reactionAt(x){ let s=0; reactions.forEach(r=>{ if (Math.abs(r.pos-x)<1e-7) s+=r.R; }); return s; }
+
+  let V = reactionAt(pts[0]) - pointLoadAt(pts[0]);
+  let M = 0;
+  const samples = [{x:pts[0], V, M}];
+  for (let i=0;i<pts.length-1;i++){
+    const a=pts[i], b=pts[i+1];
+    const activeUdls = activeUdlsForSegment(a,b);
+    const wa = wAtXForList(activeUdls, a), wb = wAtXForList(activeUdls, b);
+    const Le = b-a;
+    const k = Le>1e-9 ? (wb-wa)/Le : 0; // slope of the (possibly trapezoidal) load across this segment
+    const Va = V, Ma = M;
+    for (let n=1;n<=samplesPerSeg;n++){
+      const s = Le*n/samplesPerSeg;
+      const Vx = Va - wa*s - 0.5*k*s*s;
+      const Mx = Ma + Va*s - 0.5*wa*s*s - (k*s*s*s)/6;
+      samples.push({x:a+s, V:Vx, M:Mx});
+    }
+    V = Va - wa*Le - 0.5*k*Le*Le;
+    M = Ma + Va*Le - 0.5*wa*Le*Le - (k*Le*Le*Le)/6;
+    const jump = reactionAt(b) - pointLoadAt(b);
+    V += jump;
+    samples.push({x:b, V, M});
+  }
+  return samples;
+}
+
+function deflAtX(defl, x){
+  // linear-ish search + interpolation (Hermite not necessary for display purposes at this resolution)
+  for (let i=0;i<defl.length-1;i++){
+    if (x >= defl[i].x-1e-9 && x <= defl[i+1].x+1e-9){
+      const x1=defl[i].x, x2=defl[i+1].x, v1=defl[i].v, v2=defl[i+1].v;
+      if (x2-x1 < 1e-9) return v1;
+      const t = (x-x1)/(x2-x1);
+      return v1 + t*(v2-v1);
+    }
+  }
+  return defl[defl.length-1].v;
+}
+
+/* ======================= RUN ANALYSIS ======================= */
+function runAnalysis(afterDraw){
+  // these two live on the schematic (recreated every render), so sync from the DOM when it
+  // exists and fall back to the last-known value otherwise (e.g. the very first call, before
+  // anything has ever been rendered)
+  const lengthInput = document.getElementById('beamLength');
+  if (lengthInput && lengthInput.value !== '') beamLengthValue = parseFloat(lengthInput.value);
+  const tribInput = document.getElementById('tribWidth');
+  if (tribInput && tribInput.value !== '') tribWidthValue = parseFloat(tribInput.value);
+  const L = beamLengthValue || 0;
+  const trib = tribWidthValue || 0;
+  const E = parseFloat(document.getElementById('propE').value)||0;
+  const I = parseFloat(document.getElementById('propI').value)||0;
+  const Fb = parseFloat(document.getElementById('allowFb').value)||0; // allowable bending MOMENT capacity, kN·m
+  const Fv = parseFloat(document.getElementById('allowFv').value)||0; // allowable shear FORCE capacity, kN
+  const deflDenom = parseFloat(document.getElementById('deflLimit').value)||300;
+
+  const results = document.getElementById('results');
+
+  if (!L || L<=0){ results.innerHTML = errPanel('Enter a beam length greater than zero.'); return; }
+  if (supports.length < 2){ results.innerHTML = errPanel('At least two supports are required for a stable beam.'); return; }
+  if (!E || !I){ results.innerHTML = errPanel('Enter valid E and I section properties (must be greater than zero).'); return; }
+
+  // If the beam length was just shortened past an existing support/load position, don't error
+  // out and blank the schematic — pull everything back inside the new length automatically.
+  const wasAdjusted = clampModelToLength(L);
+
+  // Convert to consistent SI-mm units for FE: E is MPa (N/mm^2), I is mm^4, so forces must be
+  // in N and lengths in mm for the stiffness matrix to be dimensionally consistent.
+  const Lmm = L*1000;
+  const supMm = supports.map(s=>({pos:s.pos*1000, type:s.type}));
+  const ptMm = pointLoads.map(p=>({pos:p.pos*1000, P:p.mag*1000})); // kN -> N
+  const dMm = udls.map(u=>{
+    const wStartKnM = u.mode==='area' ? u.magStart*trib : u.magStart; // kN per m
+    const wEndKnM = u.mode==='area' ? u.magEnd*trib : u.magEnd;
+    // 1 kN/m == 1 N/mm numerically, so no further scaling needed for the N/mm rate itself
+    return {start:u.start*1000, end:u.end*1000, wStart:wStartKnM, wEnd:wEndKnM};
+  });
+
+  let solved;
+  try{
+    solved = solveWithLiftoff(Lmm, supMm, ptMm, dMm, E, I);
+  }catch(err){
+    results.innerHTML = errPanel('Solver error: the model may be unstable (check support layout). '+err.message);
+    return;
+  }
+  const fe = solved.fe;
+
+  // reactions come out in N -> convert to kN (liftedOff supports carry 0 — they've physically
+  // separated from the beam because they have no anchorage to resist the net uplift there)
+  const reactions = solved.reactions.map(r=>({pos:r.pos/1000, type:r.type, R:r.R/1000, liftedOff:r.liftedOff}));
+
+  // diagrams computed directly in m / kN domain via statics sweep -> V in kN, M in kN*m
+  const diag = computeDiagrams(L, supports, pointLoads.map(p=>({pos:p.pos, P:p.mag})), udls.map(u=>({
+    start:u.start, end:u.end,
+    wStart:(u.mode==='area'?u.magStart*trib:u.magStart),
+    wEnd:(u.mode==='area'?u.magEnd*trib:u.magEnd)
+  })), reactions);
+
+  // deflection already in mm (FE solved in mm domain) -> sample at same x (m), convert to mm for lookup
+  const deflSamples = diag.map(d=>({x:d.x, defl_mm: deflAtX(fe.defl, d.x*1000)}));
+
+  // summary extremes
+  let Vmax=-Infinity, VmaxX=0, Vmin=Infinity, VminX=0;
+  let Mmax=-Infinity, MmaxX=0, Mmin=Infinity, MminX=0;
+  let Dmax=-Infinity, DmaxX=0, Dmin=Infinity, DminX=0;
+  diag.forEach(d=>{
+    if (d.V>Vmax){Vmax=d.V;VmaxX=d.x;} if (d.V<Vmin){Vmin=d.V;VminX=d.x;}
+    if (d.M>Mmax){Mmax=d.M;MmaxX=d.x;} if (d.M<Mmin){Mmin=d.M;MminX=d.x;}
+  });
+  deflSamples.forEach(d=>{
+    if (d.defl_mm>Dmax){Dmax=d.defl_mm;DmaxX=d.x;} if (d.defl_mm<Dmin){Dmin=d.defl_mm;DminX=d.x;}
+  });
+  const Vabs = Math.max(Math.abs(Vmax), Math.abs(Vmin));
+  const Mabs = Math.max(Math.abs(Mmax), Math.abs(Mmin));
+  const Dabs = Math.max(Math.abs(Dmax), Math.abs(Dmin));
+  const DabsX = Math.abs(Dmax)>=Math.abs(Dmin) ? DmaxX : DminX;
+  const MabsAtX = Math.abs(Mmax)>=Math.abs(Mmin) ? MmaxX : MminX;
+  const VabsAtX = Math.abs(Vmax)>=Math.abs(Vmin) ? VmaxX : VminX;
+
+  // fb/fv are now direct DEMAND moment (kN·m) and shear (kN) — compared straight against
+  // the rated capacities Fb/Fv from the product datasheet, not converted through a section
+  // modulus/area stress calculation.
+  const fb = Mabs;
+  const fv = Vabs;
+  const deflRatioActual = Dabs>1e-9 ? (L*1000)/Dabs : Infinity;
+  const deflAllowIn = (L*1000)/deflDenom; // mm
+
+  const bendingPass = Fb>0 ? fb<=Fb : null;
+  const shearPass = Fv>0 ? fv<=Fv : null;
+  const deflPass = Dabs<=deflAllowIn;
+
+  renderResults({
+    L, supports, pointLoads, udls, trib, reactions, diag, deflSamples,
+    Vabs, VabsAtX, Mabs, MabsAtX, Dabs, DabsX,
+    fb, Fb, bendingPass, fv, Fv, shearPass,
+    deflAllowIn, deflDenom, deflPass, deflRatioActual, wasAdjusted
+  }, afterDraw);
+
+  if (suppressAutosaveOnce){ suppressAutosaveOnce = false; } else { saveAutosave(); }
+}
+
+function errPanel(msg){
+  return `<div class="panel"><div class="panel-head">Model Input Error</div><div class="empty-msg" style="color:var(--red);">${msg}</div></div>`;
+}
+
+/* ======================= RENDERING ======================= */
+function fmt(n, d=1){
+  if (!isFinite(n)) return '—';
+  return n.toLocaleString(undefined,{minimumFractionDigits:d, maximumFractionDigits:d});
+}
+
+let lastResults = null;
+function renderResults(R, afterDraw){
+  lastResults = R;
+  const results = document.getElementById('results');
+  results.innerHTML = `
+    <div class="panel">
+      <div class="panel-head">Beam Schematic
+        <span class="legend">
+          <span><span class="swatch" style="background:var(--cyan);"></span>Beam</span>
+          <span><span class="swatch" style="background:var(--amber);"></span>Point Load / Tie-down</span>
+          <span><span class="swatch" style="background:var(--blue-line);"></span>Distributed Load / Free Support</span>
+          <span><span class="swatch" style="background:var(--red);"></span>Lifted Off (Uplift)</span>
+        </span>
+      </div>
+      <div class="diagram-wrap">
+        ${R.wasAdjusted ? '<div class="adjust-note">Beam length changed — support/load position(s) were pulled back inside the new length automatically.</div>' : ''}
+        <div class="quick-add">
+          <div class="schematic-field">
+            <label>Length (m)</label>
+            <input type="number" id="beamLength" value="${R.L}" min="0.5" step="0.1">
+          </div>
+          <div class="schematic-field">
+            <label>Trib. Width (m)</label>
+            <input type="number" id="tribWidth" value="${R.trib}" min="0" step="0.1">
+          </div>
+          <div class="schematic-field">
+            <label>UDL Input</label>
+            <div class="udl-mode-toggle">
+              <button type="button" class="udl-mode-btn ${udlModeGlobal==='line'?'active':''}" data-mode="line">Line (kN/m)</button>
+              <button type="button" class="udl-mode-btn ${udlModeGlobal==='area'?'active':''}" data-mode="area">Area (kN/m\u00b2\u00d7trib)</button>
+            </div>
+          </div>
+          <button class="qa-btn" id="qaSupport">+ Support</button>
+          <button class="qa-btn" id="qaPointLoad">+ Point Load</button>
+          <button class="qa-btn" id="qaUdl">+ Distributed Load</button>
+          <span style="flex:1;"></span>
+          <span class="field-note" style="align-self:center;">drag to move &middot; drag UDL edges to resize &middot; double-click to edit &middot; right-click for tables</span>
+        </div>
+        <canvas id="cvSchematic" height="170" style="margin-top:8px;"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Reactions &amp; Support Comparison</div>
+      <div class="panel-body" style="padding-top:4px;">
+        <table>
+          <thead><tr><th>Support</th><th>Position (m)</th><th>Type</th><th>Reaction (kN)</th><th>Direction</th><th>Status</th></tr></thead>
+          <tbody>${reactionRows(R.reactions)}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Shear Diagram (V)</div>
+      <div class="diagram-wrap">
+        <canvas id="cvShear" height="180"></canvas>
+        <div class="diagram-meta">Max |V| = <b>${fmt(R.Vabs,2)} kN</b> at x = ${fmt(R.VabsAtX,2)} m<span>Sign convention: positive = upward-acting shear just right of section</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Moment Diagram (M)</div>
+      <div class="diagram-wrap">
+        <canvas id="cvMoment" height="180"></canvas>
+        <div class="diagram-meta">Max |M| = <b>${fmt(R.Mabs,2)} kN·m</b> at x = ${fmt(R.MabsAtX,2)} m<span>Positive = sagging (tension on bottom fiber), plotted downward</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Deflection Diagram (Δ)</div>
+      <div class="diagram-wrap">
+        <canvas id="cvDefl" height="180"></canvas>
+        <div class="diagram-meta">Max |Δ| = <b>${fmt(R.Dabs,2)} mm</b> at x = ${fmt(R.DabsX,2)} m<span>Downward deflection plotted below axis</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Result Summary</div>
+      <div class="summary-grid">
+        ${summaryCell('Max Shear','V', fmt(R.Vabs,2),'kN', `at ${fmt(R.VabsAtX,2)} m`, null)}
+        ${summaryCell('Max Moment','M', fmt(R.Mabs,2),'kN·m', `at ${fmt(R.MabsAtX,2)} m`, null)}
+        ${summaryCell('Max Deflection','Δ', fmt(R.Dabs,2),'mm', `L/${fmt(R.deflRatioActual,0)} actual (limit L/${fmt(R.deflDenom,0)})`, R.deflPass)}
+        ${summaryCell('Bending Moment','M', fmt(R.fb,2),'kN·m', R.Fb ? `vs. Mb = ${fmt(R.Fb,2)} kN·m` : 'no allowable set', R.bendingPass)}
+      </div>
+      <div class="panel-body">
+        <table>
+          <thead><tr><th>Check</th><th>Demand</th><th>Capacity</th><th>Ratio</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Bending Moment (M)</td>
+              <td>${fmt(R.fb,2)} kN&middot;m</td>
+              <td>${R.Fb? fmt(R.Fb,2)+' kN&middot;m' : '—'}</td>
+              <td>${R.Fb? fmt(R.fb/R.Fb,2) : '—'}</td>
+              <td>${statusTag(R.bendingPass)}</td>
+            </tr>
+            <tr>
+              <td>Shear Force (V)</td>
+              <td>${fmt(R.fv,2)} kN</td>
+              <td>${R.Fv? fmt(R.Fv,2)+' kN' : '—'}</td>
+              <td>${R.Fv? fmt(R.fv/R.Fv,2) : '—'}</td>
+              <td>${statusTag(R.shearPass)}</td>
+            </tr>
+            <tr>
+              <td>Deflection (Δmax)</td>
+              <td>${fmt(R.Dabs,2)} mm</td>
+              <td>${fmt(R.deflAllowIn,2)} mm (L/${fmt(R.deflDenom,0)})</td>
+              <td>${fmt(R.Dabs/R.deflAllowIn,2)}</td>
+              <td>${statusTag(R.deflPass)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  function drawAll(){
+    drawSchematic(R);
+    renderInteractiveSeries('cvShear', R.diag.map(d=>({x:d.x,y:d.V})), 'kN', '#6FD6E8');
+    renderInteractiveSeries('cvMoment', R.diag.map(d=>({x:d.x,y:d.M})), 'kN·m', '#F2A93B', true, true);
+    renderInteractiveSeries('cvDefl', R.deflSamples.map(d=>({x:d.x,y:d.defl_mm})), 'mm', '#5FCB8D');
+    if (typeof afterDraw === 'function') afterDraw();
+  }
+  // draw after the browser has laid out the freshly-inserted panels, so canvas widths are correct
+  requestAnimationFrame(()=> requestAnimationFrame(drawAll));
+
+  document.getElementById('beamLength').addEventListener('change', ()=> runAnalysis());
+  document.getElementById('tribWidth').addEventListener('change', ()=> runAnalysis());
+
+  document.querySelectorAll('.udl-mode-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const mode = btn.dataset.mode;
+      if (mode === udlModeGlobal) return;
+      udlModeGlobal = mode;
+      udls.forEach(u=> u.mode = udlModeGlobal); // resync every existing UDL to the new global mode
+      runAnalysis();
+    });
+  });
+
+  document.getElementById('qaSupport').addEventListener('click', ()=>{
+    const idx = addSupportDefault();
+    runAnalysis(()=> openEditorFor('support', idx, true));
+  });
+  document.getElementById('qaPointLoad').addEventListener('click', ()=>{
+    const idx = addPointLoadDefault();
+    runAnalysis(()=> openEditorFor('pointload', idx, true));
+  });
+  document.getElementById('qaUdl').addEventListener('click', ()=>{
+    const idx = addUdlDefault();
+    runAnalysis(()=> openEditorFor('udl', idx, true));
+  });
+}
+
+function statusTag(pass){
+  if (pass===null) return '<span class="tag tag-neutral">N/A</span>';
+  return pass ? '<span class="tag tag-pass">PASS</span>' : '<span class="tag tag-fail">FAIL</span>';
+}
+
+function summaryCell(label, sym, val, unit, sub, pass){
+  let cls = '';
+  if (pass===true) cls='pass'; if (pass===false) cls='fail';
+  return `<div class="summary-cell ${cls}">
+    <div class="lbl">${label} (${sym})</div>
+    <div class="val">${val} <small>${unit}</small></div>
+    <div class="sub">${sub}</div>
+  </div>`;
+}
+
+function reactionRows(reactions){
+  return reactions.map((r,i)=>{
+    if (r.liftedOff){
+      return `<tr>
+        <td>S${i+1}</td>
+        <td>${fmt(r.pos,2)}</td>
+        <td>Free</td>
+        <td>0.00</td>
+        <td>Separated — no bearing contact</td>
+        <td><span class="tag tag-warn">LIFTED OFF — BEAM UPLIFTS HERE</span></td>
+      </tr>`;
+    }
+    const isUplift = r.R < -1e-6;
+    const dir = r.R>=0 ? 'Bearing (down on support)' : 'Uplift (up on support)';
+    let status;
+    if (r.type==='free'){
+      status = isUplift ? '<span class="tag tag-fail">UPLIFT — NEEDS TIE-DOWN</span>' : '<span class="tag tag-pass">OK — BEARING ONLY</span>';
+    } else {
+      status = isUplift ? '<span class="tag tag-warn">TIE-DOWN RESISTING '+fmt(Math.abs(r.R),2)+' kN UPLIFT</span>' : '<span class="tag tag-pass">OK</span>';
+    }
+    return `<tr>
+      <td>S${i+1}</td>
+      <td>${fmt(r.pos,2)}</td>
+      <td>${r.type==='tie'?'Tie-down':'Free'}</td>
+      <td>${fmt(Math.abs(r.R),2)}</td>
+      <td>${dir}</td>
+      <td>${status}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ---- Canvas: beam schematic ---- */
+function setupCanvas(id, hCss, opts){
+  const o = opts||{};
+  const c = document.getElementById(id);
+  const dpr = o.forceScale || window.devicePixelRatio || 1;
+  let wCss = o.forceWidth || (c.parentElement ? c.parentElement.clientWidth : 0);
+  if (!wCss) wCss = c.getBoundingClientRect().width;
+  if (!wCss) wCss = document.getElementById('results').clientWidth || 600;
+  if (!wCss || wCss < 50) wCss = 600; // guaranteed non-zero fallback so a diagram is never silently blank
+  c.style.width = o.forceWidth ? wCss+'px' : '100%';
+  c.style.height = hCss+'px';
+  c.width = Math.round(wCss*dpr); c.height = Math.round(hCss*dpr);
+  const ctx = c.getContext('2d');
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.scale(dpr,dpr);
+  return {ctx, w:wCss, h:hCss};
+}
+
+/* Redrawn-for-print color palette: dark ink on white, no glow/alpha tricks */
+const PRINT_THEME = {
+  beam:'#1f2937', pointLoad:'#b45309', udlLine:'#1d4ed8', udlText:'#1d4ed8',
+  tieFill:'#b45309', tieBolt:'#ffffff', freeStroke:'#1d4ed8', freeDash:'#93c5fd',
+  liftedStroke:'#b91c1c', liftedDash:'#fca5a5', dim:'#9ca3af', dimText:'#4b5563',
+  hatching:'#9ca3af', labelText:'#111827', grid:'#e5e7eb', zero:'#9ca3af'
+};
+
+/* ======================= INTERACTIVE SCHEMATIC ======================= */
+let schematicGeom = null;
+let hitRegions = [];
+let dragCandidate = null; // {type, index, startX, startY} — set on mousedown, promoted once past a small movement threshold
+let draggingItem = null;  // {type, index} — only non-null once an actual drag is underway
+
+function drawSchematic(R, canvasId, printMode, canvasOpts){
+  canvasId = canvasId || 'cvSchematic';
+  const T = printMode ? PRINT_THEME : {
+    beam:'#6FD6E8', pointLoad:'#F2A93B', udlLine:'rgba(191,220,250,0.8)', udlText:'#BFDCFA',
+    tieFill:'#F2A93B', tieBolt:'#0A1F3A', freeStroke:'#6FD6E8', freeDash:'rgba(111,214,232,0.5)',
+    liftedStroke:'#EF6B62', liftedDash:'rgba(239,107,98,0.5)', dim:'rgba(191,220,250,0.35)',
+    dimText:'rgba(191,220,250,0.6)', hatching:'rgba(191,220,250,0.5)', labelText:'#BFDCFA'
+  };
+  const {ctx,w,h} = setupCanvas(canvasId, 170, canvasOpts);
+  ctx.clearRect(0,0,w,h);
+  const padL=50, padR=30, top=40, baseY=100;
+  const L = R.L;
+  const xScale = (w-padL-padR)/L;
+  const X = x => padL + x*xScale;
+  if (!printMode){ schematicGeom = {padL, padR, top, baseY, xScale, L, w, h}; hitRegions = []; }
+
+  ctx.font = '11px IBM Plex Mono';
+
+  // beam line
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = T.beam;
+  ctx.beginPath(); ctx.moveTo(X(0), baseY); ctx.lineTo(X(L), baseY); ctx.stroke();
+  if (!printMode) hitRegions.push({type:'beam', index:-1, x1:X(0), y1:baseY-11, x2:X(L), y2:baseY+11});
+
+  // udls (drawn as trapezoids — arrow height varies linearly from magStart to magEnd)
+  const maxUdlMag = Math.max(1e-6, ...R.udls.flatMap(u=>[Math.abs(u.magStart), Math.abs(u.magEnd)]));
+  const arrowSpace = (baseY-3) - top;
+  R.udls.forEach((u,i)=>{
+    ctx.strokeStyle = T.udlLine;
+    ctx.lineWidth = 1;
+    const topYStart = (baseY-3) - (Math.abs(u.magStart)/maxUdlMag) * arrowSpace;
+    const topYEnd = (baseY-3) - (Math.abs(u.magEnd)/maxUdlMag) * arrowSpace;
+    ctx.beginPath(); ctx.moveTo(X(u.start), topYStart); ctx.lineTo(X(u.end), topYEnd); ctx.stroke();
+    const n = Math.max(2, Math.round((u.end-u.start)*xScale/14));
+    for (let k=0;k<=n;k++){
+      const t = k/n;
+      const x = X(u.start) + (X(u.end)-X(u.start))*t;
+      const topY = topYStart + (topYEnd-topYStart)*t;
+      ctx.beginPath(); ctx.moveTo(x,topY); ctx.lineTo(x,baseY-3);
+      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x,baseY-3); ctx.lineTo(x-3,baseY-8); ctx.moveTo(x,baseY-3); ctx.lineTo(x+3,baseY-8);
+      ctx.stroke();
+    }
+    const uniform = u.magStart===u.magEnd;
+    const valueText = uniform ? String(u.magStart) : (u.magStart+'\u2192'+u.magEnd);
+    const label = u.mode==='area' ? (valueText+' kN/m\u00b2 \u00d7 '+R.trib+' m trib') : (valueText+' kN/m');
+    ctx.fillStyle = T.udlText;
+    ctx.fillText(label, X(u.start)+2, Math.min(topYStart,topYEnd)-4);
+    if (!printMode) hitRegions.push({type:'udl', index:i, x1:X(u.start), y1:Math.min(topYStart,topYEnd)-14, x2:X(u.end), y2:baseY-2});
+  });
+
+  // point loads
+  R.pointLoads.forEach((p,i)=>{
+    const x = X(p.pos);
+    ctx.strokeStyle = T.pointLoad; ctx.fillStyle = T.pointLoad; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x, top+8); ctx.lineTo(x, baseY-2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x,baseY-2); ctx.lineTo(x-4,baseY-10); ctx.lineTo(x+4,baseY-10); ctx.closePath(); ctx.fill();
+    ctx.fillText(p.mag+' kN', x-14, top+4);
+    if (!printMode) hitRegions.push({type:'pointload', index:i, x1:x-14, y1:top, x2:x+14, y2:baseY-1});
+  });
+
+  // supports
+  R.supports.forEach((s,i)=>{
+    const x = X(s.pos);
+    const rx = R.reactions ? R.reactions.find(r=>Math.abs(r.pos-s.pos)<1e-6) : null;
+    const liftedOff = rx && rx.liftedOff;
+    const uplift = rx && !rx.liftedOff && rx.R < -1e-6;
+
+    if (s.type==='tie'){
+      // TIE-DOWN: solid filled triangle bearing on a solid hatched (anchored) base
+      ctx.fillStyle = T.tieFill;
+      ctx.strokeStyle = ctx.fillStyle;
+      ctx.beginPath();
+      ctx.moveTo(x, baseY); ctx.lineTo(x-9, baseY+16); ctx.lineTo(x+9, baseY+16); ctx.closePath();
+      ctx.fill();
+      // anchor bolt marks (signifies uplift capacity)
+      ctx.strokeStyle = T.tieBolt; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x-4, baseY+6); ctx.lineTo(x-4, baseY+13); ctx.moveTo(x+4, baseY+6); ctx.lineTo(x+4, baseY+13); ctx.stroke();
+      // solid ground hatching (anchored to structure below)
+      ctx.strokeStyle = T.hatching; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(x-13,baseY+16); ctx.lineTo(x+13,baseY+16); ctx.stroke();
+      for (let k=-12;k<=12;k+=5){
+        ctx.beginPath(); ctx.moveTo(x+k,baseY+16); ctx.lineTo(x+k-4,baseY+22); ctx.stroke();
+      }
+      if (uplift){
+        ctx.strokeStyle = T.tieFill; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(x, baseY+16); ctx.lineTo(x, baseY+6); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x,baseY+6); ctx.lineTo(x-3,baseY+11); ctx.lineTo(x+3,baseY+11); ctx.closePath(); ctx.fill();
+      }
+    } else if (liftedOff){
+      // FREE support that has physically separated under this load case: gap + dashed outline
+      ctx.strokeStyle = T.liftedStroke; ctx.lineWidth = 1.5; ctx.setLineDash([3,3]);
+      ctx.beginPath();
+      ctx.moveTo(x, baseY+8); ctx.lineTo(x-9, baseY+24); ctx.lineTo(x+9, baseY+24); ctx.closePath();
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.strokeStyle = T.liftedDash; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(x-13,baseY+24); ctx.lineTo(x+13,baseY+24); ctx.stroke();
+      // gap marks between beam and support = no longer bearing
+      ctx.strokeStyle = T.liftedStroke;
+      ctx.beginPath(); ctx.moveTo(x-3,baseY); ctx.lineTo(x-3,baseY+5); ctx.moveTo(x+3,baseY); ctx.lineTo(x+3,baseY+5); ctx.stroke();
+    } else {
+      // FREE (bearing-only, unanchored): hollow triangle resting on a roller — no ground hatching
+      ctx.strokeStyle = T.freeStroke; ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x, baseY); ctx.lineTo(x-9, baseY+15); ctx.lineTo(x+9, baseY+15); ctx.closePath();
+      ctx.stroke();
+      // roller circles (free to bear only, not anchored)
+      ctx.fillStyle = T.freeStroke;
+      [x-5, x, x+5].forEach(cx=>{
+        ctx.beginPath(); ctx.arc(cx, baseY+18.5, 2.4, 0, Math.PI*2); ctx.fill();
+      });
+      // dashed baseline (no positive/anchored connection to ground)
+      ctx.strokeStyle = T.freeDash; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+      ctx.beginPath(); ctx.moveTo(x-13,baseY+21); ctx.lineTo(x+13,baseY+21); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    ctx.fillStyle = liftedOff ? T.liftedStroke : T.labelText;
+    ctx.font='10px IBM Plex Mono';
+    const labelText = liftedOff ? 'LIFTED @'+fmt(s.pos,1)+'m' : (s.type==='free'?'FREE':'TIE')+' @'+fmt(s.pos,1)+'m';
+    ctx.fillText(labelText, x-24, baseY+38);
+    if (!printMode) hitRegions.push({type:'support', index:i, x1:x-16, y1:baseY-2, x2:x+16, y2:baseY+42});
+  });
+
+  // dimension line
+  ctx.strokeStyle=T.dim;
+  ctx.beginPath(); ctx.moveTo(X(0), 155); ctx.lineTo(X(L),155); ctx.stroke();
+  ctx.fillStyle=T.dimText;
+  ctx.font='10px IBM Plex Mono';
+  ctx.fillText('0 m', X(0)-6, 150);
+  ctx.fillText(L+' m', X(L)-10, 150);
+
+  // live position readout while actively dragging a support, point load, or UDL
+  if (!printMode && draggingItem){
+    let label;
+    let dx;
+    if (draggingItem.type==='udl'){
+      const u = R.udls[draggingItem.index];
+      label = 'start = '+fmt(u.start,2)+' m   end = '+fmt(u.end,2)+' m';
+      dx = X((u.start+u.end)/2);
+    } else {
+      const dragPos = draggingItem.type==='support' ? R.supports[draggingItem.index].pos : R.pointLoads[draggingItem.index].pos;
+      dx = X(dragPos);
+      label = 'x = '+fmt(dragPos,2)+' m';
+    }
+    ctx.font = 'bold 11px IBM Plex Mono';
+    const boxW = ctx.measureText(label).width + 16;
+    let boxX = dx - boxW/2;
+    boxX = Math.max(4, Math.min(w-boxW-4, boxX));
+    const boxY = 4;
+    ctx.fillStyle = 'rgba(10,31,58,0.94)';
+    ctx.strokeStyle = '#F2A93B';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(boxX, boxY, boxW, 20, 3); else ctx.rect(boxX, boxY, boxW, 20);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#F2A93B';
+    ctx.fillText(label, boxX+8, boxY+14);
+  }
+
+  if (!printMode) attachSchematicEvents();
+}
+
+function hitTest(px, py){
+  // check specific items first (point loads, supports), then udls, then beam fallback
+  const order = ['pointload','support','udl','beam'];
+  for (const t of order){
+    for (const r of hitRegions){
+      if (r.type!==t) continue;
+      if (px>=r.x1 && px<=r.x2 && py>=r.y1 && py<=r.y2) return r;
+    }
+  }
+  return null;
+}
+
+function attachSchematicEvents(){
+  const cv = document.getElementById('cvSchematic');
+  if (!cv) return;
+  cv.addEventListener('dblclick', onSchematicDblClick);
+  cv.addEventListener('contextmenu', onSchematicContextMenu);
+  cv.addEventListener('mousedown', onSchematicMouseDown);
+  cv.addEventListener('mousemove', onSchematicHoverCursor);
+}
+
+const UDL_EDGE_HANDLE_PX = 8; // how close to a UDL's start/end line counts as grabbing that edge
+
+function udlModeAtX(u, px){
+  if (!schematicGeom) return 'move';
+  const X = x => schematicGeom.padL + x*schematicGeom.xScale;
+  if (Math.abs(px - X(u.start)) <= UDL_EDGE_HANDLE_PX) return 'resize-start';
+  if (Math.abs(px - X(u.end)) <= UDL_EDGE_HANDLE_PX) return 'resize-end';
+  return 'move';
+}
+
+function onSchematicHoverCursor(e){
+  if (draggingItem) return; // the active drag handler owns the cursor while dragging
+  const cv = document.getElementById('cvSchematic');
+  if (!cv) return;
+  const pos = canvasMousePos(e);
+  const hit = hitTest(pos.x, pos.y);
+  if (!hit){ cv.style.cursor = 'pointer'; return; }
+  if (hit.type==='support' || hit.type==='pointload'){ cv.style.cursor = 'grab'; return; }
+  if (hit.type==='udl'){
+    const mode = udlModeAtX(udls[hit.index], pos.x);
+    cv.style.cursor = (mode==='move') ? 'grab' : 'ew-resize';
+    return;
+  }
+  cv.style.cursor = 'pointer';
+}
+
+function beamXFromClientX(clientX){
+  const cv = document.getElementById('cvSchematic');
+  const rect = cv.getBoundingClientRect();
+  const mx = clientX - rect.left;
+  return (mx - schematicGeom.padL) / schematicGeom.xScale;
+}
+
+const DRAG_THRESHOLD_PX = 4;
+const UDL_MIN_SPAN = 0.05; // metres — never let a resize collapse a UDL to zero/negative width
+
+function onSchematicMouseDown(e){
+  if (e.button !== 0) return; // left button (or primary touch) only
+  const pos = canvasMousePos(e);
+  const hit = hitTest(pos.x, pos.y);
+  if (!hit || (hit.type!=='support' && hit.type!=='pointload' && hit.type!=='udl')) return;
+  if (hit.type==='udl'){
+    const u = udls[hit.index];
+    dragCandidate = {
+      type:'udl', index: hit.index, mode: udlModeAtX(u, pos.x),
+      startX: e.clientX, startY: e.clientY,
+      origStart: u.start, origEnd: u.end, startBeamX: beamXFromClientX(e.clientX)
+    };
+  } else {
+    dragCandidate = {type: hit.type, index: hit.index, startX: e.clientX, startY: e.clientY};
+  }
+  document.addEventListener('mousemove', onSchematicDragMove);
+  document.addEventListener('mouseup', onSchematicDragEnd);
+}
+
+function onSchematicDragMove(e){
+  if (!dragCandidate) return;
+  if (!draggingItem){
+    const dx = Math.abs(e.clientX - dragCandidate.startX);
+    const dy = Math.abs(e.clientY - dragCandidate.startY);
+    if (dx < DRAG_THRESHOLD_PX && dy < DRAG_THRESHOLD_PX) return; // still just a click, not a drag
+    draggingItem = dragCandidate;
+    closeAllPopups(); // dragging supersedes any open popup/menu
+    const cv = document.getElementById('cvSchematic');
+    if (cv) cv.style.cursor = (draggingItem.type==='udl' && draggingItem.mode!=='move') ? 'ew-resize' : 'grabbing';
+  }
+  if (!schematicGeom || !lastResults) return;
+
+  if (draggingItem.type==='udl'){
+    const u = udls[draggingItem.index];
+    const curBeamX = beamXFromClientX(e.clientX);
+    const L = schematicGeom.L;
+    if (draggingItem.mode==='resize-start'){
+      let newStart = Math.max(0, Math.min(draggingItem.origEnd - UDL_MIN_SPAN, curBeamX));
+      u.start = Math.round(newStart*100)/100;
+    } else if (draggingItem.mode==='resize-end'){
+      let newEnd = Math.max(draggingItem.origStart + UDL_MIN_SPAN, Math.min(L, curBeamX));
+      u.end = Math.round(newEnd*100)/100;
+    } else {
+      const span = draggingItem.origEnd - draggingItem.origStart;
+      const delta = curBeamX - draggingItem.startBeamX;
+      let newStart = draggingItem.origStart + delta;
+      let newEnd = draggingItem.origEnd + delta;
+      if (newStart < 0){ newStart = 0; newEnd = span; }
+      if (newEnd > L){ newEnd = L; newStart = L - span; }
+      u.start = Math.round(newStart*100)/100;
+      u.end = Math.round(newEnd*100)/100;
+    }
+  } else {
+    const beamX = beamXFromClientX(e.clientX);
+    const clamped = Math.max(0, Math.min(schematicGeom.L, Math.round(beamX*100)/100));
+    // mutate the live array directly — lastResults.supports/pointLoads are the SAME array
+    // references (passed by reference into renderResults), so a cheap schematic-only redraw
+    // below immediately reflects the new position without re-running the full FE solve
+    if (draggingItem.type==='support') supports[draggingItem.index].pos = clamped;
+    else pointLoads[draggingItem.index].pos = clamped;
+  }
+  drawSchematic(lastResults, 'cvSchematic', false);
+}
+
+function onSchematicDragEnd(e){
+  document.removeEventListener('mousemove', onSchematicDragMove);
+  document.removeEventListener('mouseup', onSchematicDragEnd);
+  const wasDragging = !!draggingItem;
+  dragCandidate = null;
+  draggingItem = null;
+  const cv = document.getElementById('cvSchematic');
+  if (cv) cv.style.cursor = 'pointer';
+  if (wasDragging) runAnalysis(); // one full recompute (reactions/diagrams) once the drag settles
+}
+
+function canvasMousePos(e){
+  const cv = document.getElementById('cvSchematic');
+  const rect = cv.getBoundingClientRect();
+  return {x: e.clientX-rect.left, y: e.clientY-rect.top, clientX:e.clientX, clientY:e.clientY};
+}
+
+function onSchematicDblClick(e){
+  e.preventDefault();
+  closeAllPopups();
+  const pos = canvasMousePos(e);
+  const hit = hitTest(pos.x, pos.y);
+  if (!hit || hit.type==='beam'){
+    // add a new point load at the clicked position along the beam
+    if (!schematicGeom) return;
+    const beamX = (pos.x - schematicGeom.padL)/schematicGeom.xScale;
+    const clamped = Math.max(0, Math.min(schematicGeom.L, Math.round(beamX*10)/10));
+    const idx = addPointLoadDefault(clamped);
+    runAnalysis(()=> openEditorFor('pointload', idx, true, pos.clientX, pos.clientY));
+    return;
+  }
+  openEditorFor(hit.type, hit.index, false, pos.clientX, pos.clientY);
+}
+
+function onSchematicContextMenu(e){
+  e.preventDefault();
+  closeAllPopups();
+  showContextMenu(e.clientX, e.clientY);
+}
+
+function closeAllPopups(){
+  document.getElementById('floatPopup').innerHTML = '';
+  document.getElementById('ctxMenu').innerHTML = '';
+  document.getElementById('tableOverlayRoot').innerHTML = '';
+}
+
+document.addEventListener('click', (e)=>{
+  // close popups/menus on outside click (but not on the canvas itself, which handles its own events)
+  if (e.target.closest && (e.target.closest('.float-popup') || e.target.closest('.ctx-menu') || e.target.id==='cvSchematic' || (e.target.closest && e.target.closest('.qa-btn')))) return;
+  document.getElementById('floatPopup').innerHTML = '';
+  document.getElementById('ctxMenu').innerHTML = '';
+});
+document.addEventListener('keydown', (e)=>{
+  if (e.key==='Escape') closeAllPopups();
+});
+
+/* ---- Floating edit popup ---- */
+function openEditorFor(type, index, isNew, clientX, clientY){
+  const root = document.getElementById('floatPopup');
+  let x = clientX, y = clientY;
+  if (x===undefined || y===undefined){
+    // position over the item's current schematic location
+    const r = hitRegions.find(r=>r.type===type && r.index===index);
+    const cv = document.getElementById('cvSchematic');
+    if (r && cv){
+      const rect = cv.getBoundingClientRect();
+      x = rect.left + (r.x1+r.x2)/2;
+      y = rect.top + (r.y1+r.y2)/2;
+    } else { x = window.innerWidth/2; y = window.innerHeight/2; }
+  }
+  let title, bodyHtml, onSave, onDelete;
+
+  if (type==='support'){
+    const s = supports[index];
+    title = 'Support S'+(index+1);
+    bodyHtml = `
+      <div><label>Position (m)</label><input type="number" step="0.1" id="fp_pos" value="${s.pos}"></div>
+      <div><label>Type</label>
+        <select id="fp_type">
+          <option value="tie" ${s.type==='tie'?'selected':''}>Tie-down</option>
+          <option value="free" ${s.type==='free'?'selected':''}>Free</option>
+        </select>
+      </div>`;
+    onSave = ()=>{
+      s.pos = parseFloat(document.getElementById('fp_pos').value)||0;
+      s.type = document.getElementById('fp_type').value;
+      runAnalysis();
+    };
+    onDelete = ()=>{
+      if (supports.length<=2){ alert('At least two supports are required — add another before removing this one.'); return false; }
+      supports.splice(index,1); runAnalysis(); return true;
+    };
+  } else if (type==='pointload'){
+    const p = pointLoads[index];
+    title = 'Point Load';
+    bodyHtml = `
+      <div><label>Position (m)</label><input type="number" step="0.1" id="fp_pos" value="${p.pos}"></div>
+      <div><label>Load (kN, ↓ +)</label><input type="number" step="0.1" id="fp_mag" value="${p.mag}"></div>`;
+    onSave = ()=>{
+      p.pos = parseFloat(document.getElementById('fp_pos').value)||0;
+      p.mag = parseFloat(document.getElementById('fp_mag').value)||0;
+      runAnalysis();
+    };
+    onDelete = ()=>{ pointLoads.splice(index,1); runAnalysis(); };
+  } else if (type==='udl'){
+    const u = udls[index];
+    title = 'Distributed Load';
+    const modeLabel = udlModeGlobal==='area' ? 'Area (kN/m\u00b2 \u00d7 trib.)' : 'Line (kN/m)';
+    bodyHtml = `
+      <div class="row2">
+        <div><label>Start (m)</label><input type="number" step="0.1" id="fp_start" value="${u.start}"></div>
+        <div><label>End (m)</label><input type="number" step="0.1" id="fp_end" value="${u.end}"></div>
+      </div>
+      <div class="field-note">Input type: <b style="color:var(--cyan);">${esc(modeLabel)}</b> — set beam-wide via the toggle above the schematic.</div>
+      <div class="row2">
+        <div><label>Magnitude @ Start</label><input type="number" step="0.1" id="fp_magStart" value="${u.magStart}"></div>
+        <div><label>Magnitude @ End</label><input type="number" step="0.1" id="fp_magEnd" value="${u.magEnd}"></div>
+      </div>
+      <div class="field-note">Equal values = uniform (rectangular). Different values = trapezoidal / triangular.</div>`;
+    onSave = ()=>{
+      u.start = parseFloat(document.getElementById('fp_start').value)||0;
+      u.end = parseFloat(document.getElementById('fp_end').value)||0;
+      u.mode = udlModeGlobal;
+      u.magStart = parseFloat(document.getElementById('fp_magStart').value)||0;
+      u.magEnd = parseFloat(document.getElementById('fp_magEnd').value)||0;
+      runAnalysis();
+    };
+    onDelete = ()=>{ udls.splice(index,1); runAnalysis(); };
+  } else return;
+
+  root.innerHTML = `
+    <div class="float-popup" id="fpBox" style="left:${x}px; top:${y}px;">
+      <div class="fp-head"><span>${title}</span><span class="fp-close" id="fpClose">✕</span></div>
+      <div class="fp-body">${bodyHtml}</div>
+      <div class="fp-actions">
+        <button class="fp-save" id="fpSave">${isNew?'Add':'Save'}</button>
+        <button class="fp-delete" id="fpDelete">${isNew?'Cancel':'Delete'}</button>
+      </div>
+    </div>`;
+
+  // clamp popup within viewport
+  const box = document.getElementById('fpBox');
+  const bw = 250, bh = box.offsetHeight || 180;
+  let lx = x - bw/2, ly = y - bh - 14;
+  if (lx < 8) lx = 8;
+  if (lx + bw > window.innerWidth-8) lx = window.innerWidth-8-bw;
+  if (ly < 8) ly = y + 20;
+  box.style.left = lx+'px';
+  box.style.top = ly+'px';
+
+  document.getElementById('fpClose').addEventListener('click', ()=>{
+    if (isNew && onDelete) onDelete(); closeAllPopups();
+  });
+  document.getElementById('fpSave').addEventListener('click', ()=>{ onSave(); closeAllPopups(); });
+  document.getElementById('fpDelete').addEventListener('click', ()=>{
+    const ok = onDelete();
+    if (ok !== false) closeAllPopups();
+  });
+  root.querySelectorAll('input,select').forEach(el=>{
+    el.addEventListener('keydown', ev=>{ if (ev.key==='Enter'){ onSave(); closeAllPopups(); } });
+  });
+}
+
+/* ---- Right-click context menu ---- */
+function showContextMenu(clientX, clientY){
+  const root = document.getElementById('ctxMenu');
+  root.innerHTML = `
+    <div class="ctx-menu" id="ctxBox" style="left:${clientX}px; top:${clientY}px;">
+      <div class="ctx-title">Beam Items</div>
+      <div class="ctx-item" data-cat="support">Supports <span class="ctx-count">${supports.length}</span></div>
+      <div class="ctx-item" data-cat="pointload">Point Loads <span class="ctx-count">${pointLoads.length}</span></div>
+      <div class="ctx-item" data-cat="udl">Distributed Loads <span class="ctx-count">${udls.length}</span></div>
+    </div>`;
+  const box = document.getElementById('ctxBox');
+  const bw = 200, bh = box.offsetHeight || 140;
+  let lx = clientX, ly = clientY;
+  if (lx + bw > window.innerWidth-8) lx = window.innerWidth-8-bw;
+  if (ly + bh > window.innerHeight-8) ly = window.innerHeight-8-bh;
+  box.style.left = lx+'px'; box.style.top = ly+'px';
+  root.querySelectorAll('.ctx-item').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const cat = el.dataset.cat;
+      closeAllPopups();
+      openTableOverlay(cat);
+    });
+  });
+}
+
+/* ---- Table overlay (summary + inline edit) ---- */
+function openTableOverlay(cat){
+  const root = document.getElementById('tableOverlayRoot');
+  const titles = {support:'Supports', pointload:'Point Loads', udl:'Distributed Loads'};
+  root.innerHTML = `
+    <div class="table-overlay-bg" id="toBg">
+      <div class="table-overlay">
+        <div class="to-head"><span class="to-title">${titles[cat]}</span><span class="fp-close" id="toClose">✕</span></div>
+        <div class="to-body" id="toBody"></div>
+      </div>
+    </div>`;
+  document.getElementById('toClose').addEventListener('click', closeAllPopups);
+  document.getElementById('toBg').addEventListener('click', (e)=>{ if (e.target.id==='toBg') closeAllPopups(); });
+  renderTableBody(cat);
+}
+
+function renderTableBody(cat){
+  const body = document.getElementById('toBody');
+  if (!body) return;
+  if (cat==='support'){
+    body.innerHTML = `
+      <table class="to-table">
+        <thead><tr><th>#</th><th>Position (m)</th><th>Type</th><th></th></tr></thead>
+        <tbody>${supports.map((s,i)=>`
+          <tr>
+            <td>S${i+1}</td>
+            <td><input type="number" step="0.1" value="${s.pos}" data-i="${i}" class="to-field" data-f="pos"></td>
+            <td><select data-i="${i}" class="to-field" data-f="type">
+                <option value="tie" ${s.type==='tie'?'selected':''}>Tie-down</option>
+                <option value="free" ${s.type==='free'?'selected':''}>Free</option>
+              </select></td>
+            <td><button class="to-del" data-i="${i}">✕</button></td>
+          </tr>`).join('')}</tbody>
+      </table>
+      <button class="add-btn to-add" id="toAddRow">+ Add Support</button>`;
+  } else if (cat==='pointload'){
+    body.innerHTML = `
+      <table class="to-table">
+        <thead><tr><th>#</th><th>Position (m)</th><th>Load (kN)</th><th></th></tr></thead>
+        <tbody>${pointLoads.map((p,i)=>`
+          <tr>
+            <td>P${i+1}</td>
+            <td><input type="number" step="0.1" value="${p.pos}" data-i="${i}" class="to-field" data-f="pos"></td>
+            <td><input type="number" step="0.1" value="${p.mag}" data-i="${i}" class="to-field" data-f="mag"></td>
+            <td><button class="to-del" data-i="${i}">✕</button></td>
+          </tr>`).join('')}</tbody>
+      </table>
+      <button class="add-btn to-add" id="toAddRow">+ Add Point Load</button>`;
+  } else if (cat==='udl'){
+    const modeLabel = udlModeGlobal==='area' ? 'Area (kN/m\u00b2)' : 'Line (kN/m)';
+    body.innerHTML = `
+      <div class="field-note" style="margin-bottom:8px;">Input type for all distributed loads: <b style="color:var(--cyan);">${esc(modeLabel)}</b> — set beam-wide via the toggle above the schematic.</div>
+      <table class="to-table">
+        <thead><tr><th>#</th><th>Start (m)</th><th>End (m)</th><th>Mag. @ Start</th><th>Mag. @ End</th><th></th></tr></thead>
+        <tbody>${udls.map((u,i)=>`
+          <tr>
+            <td>W${i+1}</td>
+            <td><input type="number" step="0.1" value="${u.start}" data-i="${i}" class="to-field" data-f="start" style="width:65px;"></td>
+            <td><input type="number" step="0.1" value="${u.end}" data-i="${i}" class="to-field" data-f="end" style="width:65px;"></td>
+            <td><input type="number" step="0.1" value="${u.magStart}" data-i="${i}" class="to-field" data-f="magStart" style="width:65px;"></td>
+            <td><input type="number" step="0.1" value="${u.magEnd}" data-i="${i}" class="to-field" data-f="magEnd" style="width:65px;"></td>
+            <td><button class="to-del" data-i="${i}">✕</button></td>
+          </tr>`).join('')}</tbody>
+      </table>
+      <button class="add-btn to-add" id="toAddRow">+ Add Distributed Load</button>`;
+  }
+
+  body.querySelectorAll('.to-field').forEach(el=>{
+    el.addEventListener('change', ()=>{
+      const i = +el.dataset.i, f = el.dataset.f;
+      const arr = cat==='support'?supports:(cat==='pointload'?pointLoads:udls);
+      arr[i][f] = (f==='type'||f==='mode') ? el.value : (parseFloat(el.value)||0);
+      runAnalysis(()=> openTableOverlay(cat));
+    });
+  });
+  body.querySelectorAll('.to-del').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const i = +btn.dataset.i;
+      if (cat==='support'){
+        if (supports.length<=2){ alert('At least two supports are required.'); return; }
+        supports.splice(i,1);
+      } else if (cat==='pointload'){ pointLoads.splice(i,1); }
+      else { udls.splice(i,1); }
+      runAnalysis(()=> openTableOverlay(cat));
+    });
+  });
+  const addBtn = document.getElementById('toAddRow');
+  if (addBtn) addBtn.addEventListener('click', ()=>{
+    if (cat==='support') addSupportDefault();
+    else if (cat==='pointload') addPointLoadDefault();
+    else addUdlDefault();
+    runAnalysis(()=> openTableOverlay(cat));
+  });
+}
+
+
+/* ---- Canvas: generic V/M/Defl series ---- */
+function drawSeries(id, points, unit, color, fillFromZero, printMode, canvasOpts, hoverX, invertY){
+  const {ctx,w,h} = setupCanvas(id, 180, canvasOpts);
+  ctx.clearRect(0,0,w,h);
+  const padL=60, padR=20, padT=14, padB=22;
+  const plotW = w-padL-padR, plotH = h-padT-padB;
+  const xs = points.map(p=>p.x), ys = points.map(p=>p.y);
+  const xMin=Math.min(...xs), xMax=Math.max(...xs);
+  let yMin=Math.min(...ys,0), yMax=Math.max(...ys,0);
+  if (yMax-yMin < 1e-6){ yMax+=1; yMin-=1; }
+  const yPad = (yMax-yMin)*0.12;
+  yMin -= yPad; yMax += yPad;
+
+  const X = x => padL + (x-xMin)/(xMax-xMin||1)*plotW;
+  // invertY plots positive values DOWNWARD instead of up (used for the moment diagram, so a
+  // positive/sagging moment visually dips down the way the beam itself actually sags)
+  const Y = invertY
+    ? (y => padT + ((y-yMin)/(yMax-yMin))*plotH)
+    : (y => padT + (1-(y-yMin)/(yMax-yMin))*plotH);
+  const zeroY = Y(0);
+
+  const gridColor = printMode ? '#e5e7eb' : 'rgba(191,220,250,0.12)';
+  const zeroColor = printMode ? '#9ca3af' : 'rgba(191,220,250,0.4)';
+  const textColor = printMode ? '#4b5563' : 'rgba(191,220,250,0.55)';
+  const lineColor = printMode ? darkenForPrint(color) : color;
+  const decimals = (unit==='mm') ? 1 : 0;
+
+  // grid
+  ctx.strokeStyle=gridColor; ctx.lineWidth=1;
+  for (let i=0;i<=4;i++){
+    const gy = padT + plotH*i/4;
+    ctx.beginPath(); ctx.moveTo(padL,gy); ctx.lineTo(w-padR,gy); ctx.stroke();
+  }
+  // axis labels (y) — top-to-bottom order flips with invertY so each label still sits next
+  // to the row it actually corresponds to
+  ctx.fillStyle=textColor; ctx.font='10px IBM Plex Mono';
+  for (let i=0;i<=4;i++){
+    const val = invertY ? (yMin + (yMax-yMin)*i/4) : (yMax - (yMax-yMin)*i/4);
+    const gy = padT + plotH*i/4;
+    ctx.fillText(val.toFixed(decimals), 4, gy+3);
+  }
+
+  // zero line
+  ctx.strokeStyle=zeroColor; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(padL,zeroY); ctx.lineTo(w-padR,zeroY); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // fill
+  ctx.beginPath();
+  ctx.moveTo(X(points[0].x), zeroY);
+  points.forEach(p=> ctx.lineTo(X(p.x), Y(p.y)) );
+  ctx.lineTo(X(points[points.length-1].x), zeroY);
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(0,padT,0,padT+plotH);
+  grad.addColorStop(0, hexA(lineColor, printMode?0.22:0.35));
+  grad.addColorStop(1, hexA(lineColor, printMode?0.03:0.05));
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // line
+  ctx.beginPath();
+  points.forEach((p,i)=>{ const px=X(p.x), py=Y(p.y); if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py); });
+  ctx.strokeStyle = lineColor; ctx.lineWidth=printMode?1.75:2; ctx.stroke();
+
+  // x axis labels
+  ctx.fillStyle=textColor;
+  ctx.fillText(xMin.toFixed(1)+' m', padL-2, h-6);
+  ctx.fillText(xMax.toFixed(1)+' m', w-padR-30, h-6);
+
+  // hover crosshair + exact-value tooltip (screen only, never in the printed report)
+  if (!printMode && typeof hoverX === 'number' && isFinite(hoverX) && points.length>1){
+    const hx = Math.max(xMin, Math.min(xMax, hoverX));
+    // linear-interpolate y at hx between the two bracketing sample points — this matches
+    // exactly what the drawn polyline shows at that x, not just the nearest sample
+    let hy = points[points.length-1].y;
+    for (let i=0;i<points.length-1;i++){
+      const p1=points[i], p2=points[i+1];
+      if (hx>=p1.x-1e-9 && hx<=p2.x+1e-9){
+        const t = (p2.x-p1.x)>1e-9 ? (hx-p1.x)/(p2.x-p1.x) : 0;
+        hy = p1.y + t*(p2.y-p1.y);
+        break;
+      }
+    }
+    const px = X(hx), py = Y(hy);
+
+    ctx.strokeStyle = 'rgba(191,220,250,0.55)'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(px, padT); ctx.lineTo(px, padT+plotH); ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = lineColor;
+    ctx.beginPath(); ctx.arc(px, py, 3.5, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#0A1F3A'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(px, py, 3.5, 0, Math.PI*2); ctx.stroke();
+
+    const label1 = 'x = '+hx.toFixed(2)+' m';
+    const label2 = hy.toFixed(2)+' '+unit;
+    ctx.font='10px IBM Plex Mono';
+    const boxW = Math.max(ctx.measureText(label1).width, ctx.measureText(label2).width)+16;
+    const boxH = 32;
+    let boxX = px+10, boxY = py-boxH-8;
+    if (boxX+boxW > w-4) boxX = px-boxW-10;
+    if (boxY < 2) boxY = py+10;
+    ctx.fillStyle = 'rgba(10,31,58,0.94)';
+    ctx.strokeStyle = lineColor; ctx.lineWidth=1;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(boxX, boxY, boxW, boxH, 3); else ctx.rect(boxX, boxY, boxW, boxH);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#BFDCFA';
+    ctx.fillText(label1, boxX+8, boxY+13);
+    ctx.fillStyle = lineColor;
+    ctx.font='bold 11px IBM Plex Mono';
+    ctx.fillText(label2, boxX+8, boxY+26);
+  }
+
+  return {padL, padR, padT, padB, plotW, plotH, xMin, xMax, yMin, yMax};
+}
+/* Wraps drawSeries with mouse tracking so hovering the chart shows a crosshair + exact
+   x/y readout, interpolated along the drawn line rather than snapped to the nearest sample. */
+function renderInteractiveSeries(id, points, unit, color, fillFromZero, invertY){
+  let geom = drawSeries(id, points, unit, color, fillFromZero, false, undefined, null, invertY);
+  const cv = document.getElementById(id);
+  if (!cv) return;
+  cv.style.cursor = 'crosshair';
+  cv.onmousemove = (e)=>{
+    const rect = cv.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    if (!geom || !geom.plotW) return;
+    const dataX = geom.xMin + (mx-geom.padL)/geom.plotW*(geom.xMax-geom.xMin);
+    geom = drawSeries(id, points, unit, color, fillFromZero, false, undefined, dataX, invertY);
+  };
+  cv.onmouseleave = ()=>{
+    geom = drawSeries(id, points, unit, color, fillFromZero, false, undefined, null, invertY);
+  };
+}
+
+function hexA(hex, a){
+  const c = hex.replace('#','');
+  const r = parseInt(c.substring(0,2),16), g=parseInt(c.substring(2,4),16), b=parseInt(c.substring(4,6),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+/* Print-safe, ink-appropriate versions of the on-screen accent colors (darker, more saturated
+   so they read clearly against white paper instead of the dark blueprint background) */
+function darkenForPrint(screenColor){
+  const map = {'#6FD6E8':'#1d4ed8', '#F2A93B':'#b45309', '#5FCB8D':'#047857'};
+  return map[screenColor] || screenColor;
+}
+
+document.getElementById('runBtn').addEventListener('click', runAnalysis);
+window.addEventListener('resize', ()=>{ if(document.getElementById('cvShear')) runAnalysis(); });
+
+/* ======================= PRINT REPORT ======================= */
+(function(){
+  const d = document.getElementById('prjDate');
+  if (d && !d.value) d.value = new Date().toISOString().slice(0,10);
+})();
+
+function esc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function buildCodeCheckRows(R){
+  const rows = [];
+  rows.push({
+    check:'Bending Moment (M)', demand:fmt(R.fb,2)+' kN\u00b7m',
+    capacity: R.Fb? fmt(R.Fb,2)+' kN\u00b7m':'—', ratio: R.Fb? fmt(R.fb/R.Fb,2):'—', pass:R.bendingPass
+  });
+  rows.push({
+    check:'Shear Force (V)', demand:fmt(R.fv,2)+' kN',
+    capacity: R.Fv? fmt(R.Fv,2)+' kN':'—', ratio: R.Fv? fmt(R.fv/R.Fv,2):'—', pass:R.shearPass
+  });
+  rows.push({
+    check:'Deflection (Δmax)', demand:fmt(R.Dabs,2)+' mm',
+    capacity: fmt(R.deflAllowIn,2)+' mm (L/'+fmt(R.deflDenom,0)+')', ratio: fmt(R.Dabs/R.deflAllowIn,2), pass:R.deflPass
+  });
+  return rows;
+}
+
+function prTag(pass){
+  if (pass===null || pass===undefined) return '<span class="pr-tag" style="background:#f3f4f6;color:#6b7280;">N/A</span>';
+  return pass ? '<span class="pr-tag pr-tag-pass">PASS</span>' : '<span class="pr-tag pr-tag-fail">FAIL</span>';
+}
+
+function buildPrintReport(R){
+  const prjName = document.getElementById('prjName').value.trim() || '—';
+  const beamId = document.getElementById('prjBeamId').value.trim() || '—';
+  const by = document.getElementById('prjBy').value.trim() || '—';
+  const checked = document.getElementById('prjChecked').value.trim() || '—';
+  const dateVal = document.getElementById('prjDate').value;
+  const dateDisplay = dateVal ? new Date(dateVal+'T00:00:00').toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}) : '—';
+
+  const supSummary = R.supports.map((s,i)=>'S'+(i+1)+' '+(s.type==='tie'?'tie-down':'free')+' @ '+fmt(s.pos,2)+'m').join(', ');
+  const loadSummary = [
+    R.pointLoads.length ? R.pointLoads.length+' point load'+(R.pointLoads.length>1?'s':'') : null,
+    R.udls.length ? R.udls.length+' distributed load'+(R.udls.length>1?'s':'') : null
+  ].filter(Boolean).join(' + ') || 'none';
+
+  const sectionName = document.getElementById('sectionName').value.trim() || '—';
+
+  const root = document.getElementById('printReport');
+  const watermarkText = getLicenseWatermarkText();
+
+  function pageHeaderHtml(sheetLabel){
+    return `
+      <div class="pr-titleblock">
+        <div>
+          <h1>Beam analysis report</h1>
+          <div class="pr-sub">Finite element solution — Euler-Bernoulli beam elements, combined load case</div>
+        </div>
+        <div class="pr-meta">
+          <div>Sheet <b>${sheetLabel}</b></div>
+          <div>Date <b>${esc(dateDisplay)}</b></div>
+        </div>
+      </div>
+
+      <table class="pr-infogrid">
+        <tr>
+          <td class="k">Project</td><td class="v">${esc(prjName)}</td>
+          <td class="k" style="padding-left:20px;">Beam / Member</td><td class="v">${esc(beamId)}</td>
+        </tr>
+        <tr>
+          <td class="k">Designed by</td><td class="v">${esc(by)}</td>
+          <td class="k" style="padding-left:20px;">Checked by</td><td class="v">${esc(checked)}</td>
+        </tr>
+      </table>`;
+  }
+
+  root.innerHTML = `
+    <div class="pr-page">
+      <div class="pr-watermark">${esc(watermarkText)}</div>
+      ${pageHeaderHtml('1 of 2')}
+
+      <div class="pr-section-title">1. Beam schematic</div>
+      <canvas id="printSchematic" height="170"></canvas>
+
+      <div class="pr-section-title">2. Model summary</div>
+      <table class="pr-table">
+        <thead><tr><th>Span length</th><th>Supports</th><th>Loads (combined case)</th><th>Tributary width</th></tr></thead>
+        <tbody><tr>
+          <td>${fmt(R.L,2)} m</td>
+          <td>${esc(supSummary)}</td>
+          <td>${esc(loadSummary)}</td>
+          <td>${fmt(R.trib,2)} m</td>
+        </tr></tbody>
+      </table>
+
+      <div class="pr-section-title">3. Section properties</div>
+      <table class="pr-table">
+        <thead><tr><th>Section</th><th>E</th><th>I</th><th>Allow. Bending Moment</th><th>Allow. Shear Force</th><th>Defl. limit</th></tr></thead>
+        <tbody><tr>
+          <td>${esc(sectionName)}</td>
+          <td>${fmt(parseFloat(document.getElementById('propE').value)||0, 0)} MPa</td>
+          <td>${fmt(parseFloat(document.getElementById('propI').value)||0, 0)} mm\u2074</td>
+          <td>${R.Fb ? fmt(R.Fb,2)+' kN\u00b7m' : '—'}</td>
+          <td>${R.Fv ? fmt(R.Fv,2)+' kN' : '—'}</td>
+          <td>L/${fmt(R.deflDenom,0)}</td>
+        </tr></tbody>
+      </table>
+
+      <div class="pr-section-title">4. Loadings</div>
+      <table class="pr-table">
+        <thead><tr><th>Point load</th><th>Position</th><th>Magnitude</th></tr></thead>
+        <tbody>${R.pointLoads.length ? R.pointLoads.map((p,i)=>`
+          <tr><td>P${i+1}</td><td>${fmt(p.pos,2)} m</td><td>${fmt(p.mag,2)} kN</td></tr>
+        `).join('') : '<tr><td colspan="3" style="color:#9ca3af;">None</td></tr>'}</tbody>
+      </table>
+      <table class="pr-table" style="margin-top:10px;">
+        <thead><tr><th>Distributed load</th><th>Start</th><th>End</th><th>Type</th><th>Mag. @ start</th><th>Mag. @ end</th><th>Profile</th></tr></thead>
+        <tbody>${R.udls.length ? R.udls.map((u,i)=>{
+          const uniform = u.magStart===u.magEnd;
+          const profile = uniform ? 'Uniform' : ((u.magStart===0||u.magEnd===0) ? 'Triangular' : 'Trapezoidal');
+          const unit = u.mode==='area' ? 'kN/m\u00b2' : 'kN/m';
+          return `<tr><td>W${i+1}</td><td>${fmt(u.start,2)} m</td><td>${fmt(u.end,2)} m</td>
+            <td>${u.mode==='area'?'Area (\u00d7 trib.)':'Line'}</td>
+            <td>${fmt(u.magStart,2)} ${unit}</td><td>${fmt(u.magEnd,2)} ${unit}</td><td>${profile}</td></tr>`;
+        }).join('') : '<tr><td colspan="7" style="color:#9ca3af;">None</td></tr>'}</tbody>
+      </table>
+
+      <div class="pr-section-title">5. Reactions</div>
+      <table class="pr-table">
+        <thead><tr><th>Support</th><th>Position</th><th>Type</th><th>Reaction</th><th>Status</th></tr></thead>
+        <tbody>${R.reactions.map((r,i)=>{
+          if (r.liftedOff){
+            return `<tr><td>S${i+1}</td><td>${fmt(r.pos,2)} m</td><td>Free</td><td>0.00 kN</td>
+              <td><span class="pr-tag pr-tag-warn">LIFTED OFF — NO BEARING</span></td></tr>`;
+          }
+          const isUplift = r.R < -1e-6;
+          let status;
+          if (r.type==='free'){
+            status = isUplift ? '<span class="pr-tag pr-tag-fail">UPLIFT — NEEDS TIE-DOWN</span>' : '<span class="pr-tag pr-tag-pass">OK — BEARING ONLY</span>';
+          } else {
+            status = isUplift ? '<span class="pr-tag pr-tag-warn">TIE-DOWN, '+fmt(Math.abs(r.R),2)+' kN UPLIFT</span>' : '<span class="pr-tag pr-tag-pass">OK</span>';
+          }
+          return `<tr><td>S${i+1}</td><td>${fmt(r.pos,2)} m</td><td>${r.type==='tie'?'Tie-down':'Free'}</td>
+            <td>${fmt(Math.abs(r.R),2)} kN</td><td>${status}</td></tr>`;
+        }).join('')}</tbody>
+      </table>
+
+      <div class="pr-section-title">6. Code check summary</div>
+      <table class="pr-table">
+        <thead><tr><th>Check</th><th>Demand</th><th>Capacity</th><th>Ratio</th><th>Status</th></tr></thead>
+        <tbody>${buildCodeCheckRows(R).map(row=>`
+          <tr><td>${esc(row.check)}</td><td>${row.demand}</td><td>${row.capacity}</td><td>${row.ratio}</td><td>${prTag(row.pass)}</td></tr>
+        `).join('')}</tbody>
+      </table>
+
+      <div class="pr-page-break"></div>
+      ${pageHeaderHtml('2 of 2')}
+
+      <div class="pr-section-title">7. Shear, moment and deflection diagrams</div>
+      <div class="pr-diagrams">
+        <div><canvas id="printShear" height="150"></canvas><div class="pr-diagram-cap">Shear (V) — max ${fmt(R.Vabs,2)} kN at x = ${fmt(R.VabsAtX,2)} m</div></div>
+        <div><canvas id="printMoment" height="150"></canvas><div class="pr-diagram-cap">Moment (M) — max ${fmt(R.Mabs,2)} kN·m at x = ${fmt(R.MabsAtX,2)} m</div></div>
+        <div><canvas id="printDefl" height="150"></canvas><div class="pr-diagram-cap">Deflection (Δ) — max ${fmt(R.Dabs,2)} mm at x = ${fmt(R.DabsX,2)} m</div></div>
+      </div>
+
+      <div class="pr-footer">
+        BEAM//FE — client-side finite element solver (Euler–Bernoulli beam elements, direct stiffness method).
+        Preliminary design aid — verify against applicable code and a licensed engineer's stamp before construction use.
+      </div>
+    </div>`;
+
+  // redraw clean, print-safe versions of the diagrams into the report canvases
+  const pageW = 680;
+  drawSchematic(R, 'printSchematic', true, {forceWidth:pageW, forceScale:2.5});
+  drawSeries('printShear', R.diag.map(d=>({x:d.x,y:d.V})), 'kN', '#6FD6E8', false, true, {forceWidth:pageW, forceScale:2.5});
+  drawSeries('printMoment', R.diag.map(d=>({x:d.x,y:d.M})), 'kN·m', '#F2A93B', true, true, {forceWidth:pageW, forceScale:2.5}, undefined, true);
+  drawSeries('printDefl', R.deflSamples.map(d=>({x:d.x,y:d.defl_mm})), 'mm', '#5FCB8D', false, true, {forceWidth:pageW, forceScale:2.5});
+}
+
+document.getElementById('reportBtn').addEventListener('click', ()=>{
+  if (!lastResults){ alert('Run the analysis first.'); return; }
+  buildPrintReport(lastResults);
+  setTimeout(()=> window.print(), 80);
+});
+
+/* ======================= SAVE / LOAD / AUTOSAVE ======================= */
+const AUTOSAVE_KEY = 'beamfe_autosave_v1';
+let suppressAutosaveOnce = false;
+
+function serializeModel(){
+  return {
+    schema: 'beamfe-model',
+    version: 1,
+    savedAt: new Date().toISOString(),
+    beamLength: beamLengthValue,
+    tribWidth: tribWidthValue,
+    udlModeGlobal: udlModeGlobal,
+    sectionName: document.getElementById('sectionName').value,
+    propE: document.getElementById('propE').value,
+    propI: document.getElementById('propI').value,
+    allowFb: document.getElementById('allowFb').value,
+    allowFv: document.getElementById('allowFv').value,
+    deflLimit: document.getElementById('deflLimit').value,
+    project: {
+      name: document.getElementById('prjName').value,
+      beamId: document.getElementById('prjBeamId').value,
+      by: document.getElementById('prjBy').value,
+      checked: document.getElementById('prjChecked').value,
+      date: document.getElementById('prjDate').value
+    },
+    supports: JSON.parse(JSON.stringify(supports)),
+    pointLoads: JSON.parse(JSON.stringify(pointLoads)),
+    udls: JSON.parse(JSON.stringify(udls))
+  };
+}
+
+function setFieldVal(id, v){ if (v!=null && v!=='') document.getElementById(id).value = v; }
+
+function applyModel(data){
+  if (!data || typeof data !== 'object') return false;
+  try{
+    const setVal = setFieldVal;
+    setVal('beamLength', data.beamLength);
+    setVal('tribWidth', data.tribWidth);
+    setVal('sectionName', data.sectionName);
+    setVal('propE', data.propE);
+    setVal('propI', data.propI);
+    setVal('allowFb', data.allowFb);
+    setVal('allowFv', data.allowFv);
+    setVal('deflLimit', data.deflLimit);
+    if (data.project){
+      setVal('prjName', data.project.name);
+      setVal('prjBeamId', data.project.beamId);
+      setVal('prjBy', data.project.by);
+      setVal('prjChecked', data.project.checked);
+      setVal('prjDate', data.project.date);
+    }
+    if (Array.isArray(data.supports) && data.supports.length){
+      supports = data.supports.map(s=>({pos:parseFloat(s.pos)||0, type: s.type==='free'?'free':'tie'}));
+    }
+    if (Array.isArray(data.pointLoads)){
+      pointLoads = data.pointLoads.map(p=>({pos:parseFloat(p.pos)||0, mag:parseFloat(p.mag)||0}));
+    }
+    if (Array.isArray(data.udls)){
+      // magStart/magEnd is the current format; fall back to a single old-style "mag" field
+      // so files saved before trapezoidal-load support still load correctly.
+      udls = data.udls.map(u=>({
+        start:parseFloat(u.start)||0, end:parseFloat(u.end)||0,
+        mode: u.mode==='area' ? 'area' : 'line', // normalized below to the universal setting
+        magStart: parseFloat(u.magStart!=null ? u.magStart : u.mag)||0,
+        magEnd: parseFloat(u.magEnd!=null ? u.magEnd : u.mag)||0
+      }));
+    }
+    // Universal UDL input mode: prefer an explicitly saved global setting; otherwise infer
+    // from the first loaded UDL, so files saved before this feature still come in cleanly —
+    // and every UDL always ends up in sync, even if an older file had mixed per-row modes.
+    if (data.udlModeGlobal === 'area' || data.udlModeGlobal === 'line'){
+      udlModeGlobal = data.udlModeGlobal;
+    } else if (udls.length){
+      udlModeGlobal = udls[0].mode;
+    }
+    udls.forEach(u=> u.mode = udlModeGlobal);
+    return true;
+  }catch(err){
+    console.error('applyModel failed', err);
+    return false;
+  }
+}
+
+/* ======================= EXCEL IMPORT ======================= */
+// Recognizes common column-header spellings for beam/section properties so a spreadsheet
+// doesn't have to match our field names exactly. Units in parentheses are stripped before
+// matching, e.g. "E (MPa)" and "Modulus" both resolve to propE.
+const EXCEL_FIELD_ALIASES = {
+  beamLength: ['length','span','beamlength'],
+  tribWidth: ['tribwidth','tributarywidth','trib'],
+  propE: ['e','modulus','elasticmodulus','youngsmodulus'],
+  propI: ['i','momentofinertia','inertia'],
+  allowFb: ['fb','mb','allowbend','allowablebending','bendingcapacity','momentcapacity','allowablemoment','ratedmoment','allowbendingmoment'],
+  allowFv: ['fv','vb','allowshear','allowableshear','shearcapacity','ratedshear','allowableshearforce','allowshearforce'],
+  deflLimit: ['defllimit','deflectionlimit','deflratio','ldenom','deflectionratio']
+};
+const EXCEL_NAME_ALIASES = ['name','section','sectionname','id','label','description','beam','beamid'];
+
+function normalizeExcelHeader(h){
+  return String(h==null?'':h).toLowerCase().replace(/\(.*?\)/g,'').replace(/[^a-z0-9]+/g,'').trim();
+}
+
+// Maps one parsed spreadsheet row (object keyed by original header text) to our field names.
+function mapExcelRow(row){
+  const mapped = {};
+  let nameVal = null;
+  Object.keys(row).forEach(rawHeader=>{
+    const norm = normalizeExcelHeader(rawHeader);
+    if (norm==='') return;
+    if (nameVal===null && EXCEL_NAME_ALIASES.includes(norm)){ nameVal = row[rawHeader]; return; }
+    for (const field in EXCEL_FIELD_ALIASES){
+      if (EXCEL_FIELD_ALIASES[field].includes(norm) && mapped[field]===undefined){
+        const v = row[rawHeader];
+        if (v!==null && v!=='' && v!==undefined) mapped[field] = v;
+        break;
+      }
+    }
+  });
+  return {name:nameVal, fields:mapped};
+}
+
+function applyExcelFields(fields, name){
+  setFieldVal('beamLength', fields.beamLength);
+  setFieldVal('tribWidth', fields.tribWidth);
+  setFieldVal('propE', fields.propE);
+  setFieldVal('propI', fields.propI);
+  setFieldVal('allowFb', fields.allowFb);
+  setFieldVal('allowFv', fields.allowFv);
+  setFieldVal('deflLimit', fields.deflLimit);
+  if (name) setFieldVal('sectionName', name);
+}
+
+const EXCEL_FIELD_LABELS = {
+  beamLength:'Length (m)', tribWidth:'Trib. width (m)', propE:'E (MPa)', propI:'I (mm\u2074)',
+  allowFb:'Mb (kN\u00b7m)', allowFv:'Vb (kN)', deflLimit:'Defl. limit (L/)'
+};
+
+/* ---- Persistent saved-beams library (survives across sessions, browser-local) ---- */
+const SECTION_LIBRARY_KEY = 'beamfe_section_library_v1';
+
+function loadSectionLibrary(){
+  try{
+    const raw = localStorage.getItem(SECTION_LIBRARY_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  }catch(err){ return []; }
+}
+function saveSectionLibrary(lib){
+  try{ localStorage.setItem(SECTION_LIBRARY_KEY, JSON.stringify(lib)); }catch(err){}
+}
+
+// Adds/updates entries by name (case-insensitive) — re-importing the same beam name refreshes
+// its values instead of piling up duplicates. Entries with no usable fields are skipped.
+function upsertSectionLibraryEntries(parsedRows){
+  const lib = loadSectionLibrary();
+  parsedRows.forEach(pr=>{
+    if (!pr.fields || Object.keys(pr.fields).length===0) return;
+    const idx = lib.findIndex(e=> e.name.toLowerCase() === pr.name.toLowerCase());
+    const entry = {name: pr.name, fields: pr.fields};
+    if (idx>=0) lib[idx] = entry; else lib.push(entry);
+  });
+  saveSectionLibrary(lib);
+  renderSectionLibraryDropdown();
+}
+
+function renderSectionLibraryDropdown(){
+  const sel = document.getElementById('sectionLibrarySelect');
+  const emptyNote = document.getElementById('libraryEmptyNote');
+  if (!sel) return;
+  const lib = loadSectionLibrary();
+  const prevValue = sel.value;
+  sel.innerHTML = '<option value="">\u2014 Select a saved beam \u2014</option>' +
+    lib.map((e,i)=>`<option value="${i}">${esc(e.name)}</option>`).join('');
+  // keep the previous selection if it's still a valid index after a re-render
+  if (prevValue && lib[+prevValue]) sel.value = prevValue;
+  if (emptyNote) emptyNote.style.display = lib.length ? 'none' : 'block';
+}
+
+document.getElementById('sectionLibrarySelect').addEventListener('change', (e)=>{
+  const lib = loadSectionLibrary();
+  const entry = lib[+e.target.value];
+  if (!entry) return;
+  applyExcelFields(entry.fields, entry.name);
+  runAnalysis();
+});
+document.getElementById('clearLibraryBtn').addEventListener('click', ()=>{
+  if (!loadSectionLibrary().length) return;
+  if (!confirm('Clear all saved beams/sections? This cannot be undone.')) return;
+  saveSectionLibrary([]);
+  renderSectionLibraryDropdown();
+});
+renderSectionLibraryDropdown();
+
+function openExcelPreview(rows){
+  const root = document.getElementById('tableOverlayRoot');
+  const parsedRows = rows.map((r,i)=>{
+    const m = mapExcelRow(r);
+    return {index:i, name: m.name!=null ? String(m.name) : ('Row '+(i+1)), hasRealName: m.name!=null, fields: m.fields};
+  });
+  const fieldKeys = Object.keys(EXCEL_FIELD_LABELS);
+
+  // Save everything recognized straight into the persistent library, regardless of which
+  // row (if any) gets applied to the current model right now.
+  upsertSectionLibraryEntries(parsedRows);
+
+  root.innerHTML = `
+    <div class="table-overlay-bg" id="xlBg">
+      <div class="table-overlay">
+        <div class="to-head"><span class="to-title">Import from Excel</span><span class="fp-close" id="xlClose">✕</span></div>
+        <div class="to-body">
+          <div class="field-note" style="margin-bottom:10px;">Recognized columns are shown below — unrecognized columns are ignored. All ${parsedRows.length} row${parsedRows.length===1?'':'s'} ${parsedRows.length===1?'has':'have'} been saved to your beam library (see the dropdown in Section Properties). Pick a row below to apply it to the current model right now too; any field not found in that row is left as-is.</div>
+          <table class="to-table">
+            <thead><tr><th>${parsedRows.length>1?'Section':''}</th>${fieldKeys.map(k=>`<th>${EXCEL_FIELD_LABELS[k]}</th>`).join('')}<th></th></tr></thead>
+            <tbody>${parsedRows.map(pr=>`
+              <tr>
+                <td>${esc(pr.name)}</td>
+                ${fieldKeys.map(k=> `<td>${pr.fields[k]!==undefined ? esc(String(pr.fields[k])) : '<span style="color:#4b5563;">—</span>'}</td>`).join('')}
+                <td><button class="qa-btn xl-use" data-i="${pr.index}">Use</button></td>
+              </tr>`).join('')}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('xlClose').addEventListener('click', closeAllPopups);
+  document.getElementById('xlBg').addEventListener('click', (e)=>{ if (e.target.id==='xlBg') closeAllPopups(); });
+  root.querySelectorAll('.xl-use').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const pr = parsedRows[+btn.dataset.i];
+      applyExcelFields(pr.fields, pr.hasRealName ? pr.name : null);
+      closeAllPopups();
+      runAnalysis();
+    });
+  });
+}
+
+document.getElementById('importExcelBtn').addEventListener('click', ()=>{
+  if (typeof XLSX === 'undefined'){
+    alert('The Excel-import library did not load (this needs an internet connection). Please check your connection and reload the page.');
+    return;
+  }
+  document.getElementById('importExcelInput').click();
+});
+document.getElementById('importExcelInput').addEventListener('change', (e)=>{
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const data = new Uint8Array(reader.result);
+      const wb = XLSX.read(data, {type:'array'});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, {defval:''});
+      if (!rows.length){ alert('No rows found on the first sheet of that file.'); e.target.value=''; return; }
+      openExcelPreview(rows);
+    }catch(err){
+      alert('Could not read that file as an Excel spreadsheet.');
+      console.error(err);
+    }
+    e.target.value = '';
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+function saveAutosave(){
+  try{ localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(serializeModel())); }
+  catch(err){ /* storage unavailable (private mode, sandboxed iframe, etc.) — safety net simply doesn't apply */ }
+}
+
+function stripSavedAt(json){ return json.replace(/"savedAt":"[^"]*"/, '"savedAt":""'); }
+
+function showAutosaveBanner(saved){
+  const el = document.getElementById('autosaveBanner');
+  const when = saved.savedAt ? new Date(saved.savedAt).toLocaleString() : 'a previous session';
+  el.innerHTML = `
+    <div class="autosave-banner">
+      <div class="ab-text">Recovered unsaved work from <b>${esc(when)}</b> — restore it, or dismiss to keep the current beam.</div>
+      <div class="ab-actions">
+        <button class="ab-btn ab-restore" id="abRestore">Restore</button>
+        <button class="ab-btn ab-dismiss" id="abDismiss">Dismiss</button>
+      </div>
+    </div>`;
+  document.getElementById('abRestore').addEventListener('click', ()=>{
+    if (applyModel(saved)) runAnalysis();
+    el.innerHTML = '';
+  });
+  document.getElementById('abDismiss').addEventListener('click', ()=>{
+    try{ localStorage.removeItem(AUTOSAVE_KEY); }catch(err){}
+    el.innerHTML = '';
+  });
+}
+
+document.getElementById('saveBtn').addEventListener('click', ()=>{
+  const data = serializeModel();
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const nameRaw = (document.getElementById('prjBeamId').value || document.getElementById('prjName').value || 'beam-model').trim();
+  const safe = nameRaw.replace(/[^a-z0-9\-_]+/gi,'-').replace(/^-+|-+$/g,'') || 'beam-model';
+  a.href = url; a.download = safe+'.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+});
+
+document.getElementById('loadBtn').addEventListener('click', ()=>{
+  document.getElementById('loadFileInput').click();
+});
+document.getElementById('loadFileInput').addEventListener('change', (e)=>{
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    let data;
+    try{ data = JSON.parse(reader.result); }
+    catch(err){ alert('That file is not valid JSON.'); e.target.value=''; return; }
+    if (applyModel(data)) runAnalysis();
+    else alert('That file could not be read as a beam model.');
+    e.target.value = ''; // allow re-selecting the same file later
+  };
+  reader.readAsText(file);
+});
+
+// Check for recoverable autosaved work BEFORE the first run below overwrites it, so an
+// unclaimed old session survives on the page until the person restores or dismisses it.
+(function(){
+  const initialSnapshotJSON = stripSavedAt(JSON.stringify(serializeModel()));
+  let saved = null;
+  try{
+    const raw = localStorage.getItem(AUTOSAVE_KEY);
+    if (raw) saved = JSON.parse(raw);
+  }catch(err){ saved = null; }
+  if (saved && stripSavedAt(JSON.stringify(saved)) !== initialSnapshotJSON){
+    suppressAutosaveOnce = true;
+    showAutosaveBanner(saved);
+  }
+})();
+
+// initial run
+runAnalysis();
+</script>
+</body>
+</html>
