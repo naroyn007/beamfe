@@ -748,13 +748,56 @@ document.getElementById('showForgotFromLogin').addEventListener('click', async (
 document.getElementById('startTrialBtn').addEventListener('click', async ()=>{
   const btn = document.getElementById('startTrialBtn');
   const msg = document.getElementById('licenseNeededMsg');
+
   btn.disabled = true;
-  msg.textContent = 'Starting your trial\u2026'; msg.className = 'license-msg pending';
-  const result = await callVerifyLicense('start_trial');
-  btn.disabled = false;
-  if (result.error){ msg.textContent = result.error; msg.className = 'license-msg err'; return; }
-  msg.textContent = ''; msg.className = 'license-msg';
-  await checkLicenseAndRoute(currentUserEmail);
+  msg.textContent = 'Starting your trial…';
+  msg.className = 'license-msg pending';
+
+  try {
+    const { data: sessionData } = await sb.auth.getSession();
+    const session = sessionData?.session;
+
+    if (!session?.user?.email) {
+      throw new Error('Your session has expired — please log in again.');
+    }
+
+    const res = await fetch(
+      SUPABASE_URL + '/functions/v1/beamfe-start-trial',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + session.access_token
+        },
+        body: JSON.stringify({
+          email: session.user.email
+        })
+      }
+    );
+
+    const result = await res.json();
+
+    if (!res.ok || !result.success) {
+      throw new Error(
+        result.message ||
+        result.error ||
+        'Could not start your trial.'
+      );
+    }
+
+    msg.textContent =
+      result.message ||
+      'Check your email to confirm and activate your trial.';
+    msg.className = 'license-msg ok';
+
+  } catch (err) {
+    msg.textContent =
+      err.message ||
+      'Could not start your trial. Please try again.';
+    msg.className = 'license-msg err';
+  } finally {
+    btn.disabled = false;
+  }
 });
 
 document.getElementById('redeemKeyBtn').addEventListener('click', async ()=>{
