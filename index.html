@@ -685,6 +685,74 @@ async function doSignOut(){
 
 /* ---- Login / Signup / Forgot password ---- */
 document.getElementById('showSignupView').addEventListener('click', showSignupView);
+
+/* ---- Gumroad key entry from login screen ---- */
+const gumroadLoginBtn = document.createElement('button');
+gumroadLoginBtn.className = 'license-unlock-btn license-unlock-btn-secondary';
+gumroadLoginBtn.id = 'showGumroadFromLogin';
+gumroadLoginBtn.textContent = 'I HAVE A GUMROAD KEY ▸';
+
+const loginView = document.getElementById('authLoginView');
+const loginMsg = document.getElementById('authLoginMsg');
+
+if (loginView && loginMsg && !document.getElementById('showGumroadFromLogin')) {
+  loginMsg.insertAdjacentElement('afterend', gumroadLoginBtn);
+}
+
+gumroadLoginBtn.addEventListener('click', async ()=>{
+  const email = document.getElementById('authLoginEmail').value.trim();
+  const password = document.getElementById('authLoginPassword').value;
+
+  if (!email || !password){
+    loginMsg.textContent = 'Log in first, then enter your Gumroad key.';
+    loginMsg.className = 'license-msg err';
+    document.getElementById('authLoginEmail').focus();
+    return;
+  }
+
+  gumroadLoginBtn.disabled = true;
+  loginMsg.textContent = 'Signing in…';
+  loginMsg.className = 'license-msg pending';
+
+  if (!sb){
+    gumroadLoginBtn.disabled = false;
+    loginMsg.textContent = 'Login service unavailable — reload the page and try again.';
+    loginMsg.className = 'license-msg err';
+    return;
+  }
+
+  const { data, error } = await sb.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  gumroadLoginBtn.disabled = false;
+
+  if (error){
+    loginMsg.textContent = error.message;
+    loginMsg.className = 'license-msg err';
+    return;
+  }
+
+  currentUserEmail = data.user.email;
+
+  hideAllGateViews();
+
+  const gate = document.getElementById('licenseGate');
+  if (gate) gate.style.display = 'flex';
+
+  document.getElementById('licenseNeededView').style.display = 'block';
+  document.getElementById('licenseNeededEmail').textContent = data.user.email;
+  document.getElementById('licenseNeededReason').textContent =
+    'Enter your purchased Gumroad license key below.';
+
+  document.getElementById('licenseNeededMsg').textContent = '';
+  document.getElementById('licenseNeededMsg').className = 'license-msg';
+
+  document.getElementById('gumroadKeyInput').value = '';
+  document.getElementById('gumroadKeyInput').focus();
+});
+  
 document.getElementById('showLoginFromSignup').addEventListener('click', ()=>showLoginView());
 document.getElementById('signOutFromNeeded').addEventListener('click', doSignOut);
 
