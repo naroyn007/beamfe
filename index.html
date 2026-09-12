@@ -564,8 +564,8 @@
 // If you ever need to point this back at DEVELOPMENT for testing, its values were:
 //   url: https://xhjqnkpsuyzodgnhhuwb.supabase.co
 //   key: sb_publishable_hrjlXzSh_TZtkb-3ebRbLw_QLD6HAOf
-const SUPABASE_URL = 'https://xhjqnkpsuyzodgnhhuwb.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_hrjlXzSh_TZtkb-3ebRbLw_QLD6HAOf';
+const SUPABASE_URL = 'https://swhilchfrytknrbjhrlj.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_zDYDKYHitwpi-wkDB950Bw_-HgUqFsc';
 const PRODUCT_ID = 'beam-analysis';
 // TODO: set this to wherever the Platform Hub is actually deployed — password-reset emails
 // send people there to pick a new password (the hub already has that screen built; BEAM//FE
@@ -630,9 +630,52 @@ function renderLicenseFooter(){
   if (!el) return;
   if (!currentLicense || !currentUserEmail){ el.innerHTML=''; return; }
   const planTag = currentLicense.license_type === 'trial' ? ' <span style="color:var(--amber);">(Trial)</span>' : '';
-  el.innerHTML = 'Signed in as: <b>'+esc(currentUserEmail)+'</b>'+planTag+' &middot; <a id="licenseSignOut">Sign out</a>';
+  el.innerHTML = 'Signed in as: <b>'+esc(currentUserEmail)+'</b>'+planTag+' &middot; <a id="upgradeLicenseLink">Enter license key</a> &middot; <a id="licenseSignOut">Sign out</a>';
   const so = document.getElementById('licenseSignOut');
   if (so) so.addEventListener('click', doSignOut);
+  const up = document.getElementById('upgradeLicenseLink');
+  if (up) up.addEventListener('click', showUpgradePopup);
+}
+
+/* ---- Enter/redeem a license key from inside the already-unlocked app — e.g. to upgrade
+   from a trial to a purchased key, without needing to sign out first ---- */
+function showUpgradePopup(){
+  const root = document.getElementById('tableOverlayRoot');
+  root.innerHTML = `
+    <div class="table-overlay-bg" id="upgradeBg">
+      <div class="table-overlay" style="max-width:380px;">
+        <div class="to-head"><span class="to-title">Enter License Key</span><span class="fp-close" id="upgradeClose">✕</span></div>
+        <div class="to-body">
+          <div class="field-note" style="margin-bottom:10px;">Enter a purchased Gumroad license key${currentLicense && currentLicense.license_type==='trial' ? ' to upgrade from your trial' : ''}.</div>
+          <input type="text" id="upgradeKeyInput" placeholder="Gumroad license key" style="width:100%;box-sizing:border-box;" autocomplete="off" spellcheck="false">
+          <button class="qa-btn" id="upgradeSubmitBtn" style="margin-top:10px;width:100%;">Redeem Key ▸</button>
+          <div class="license-msg" id="upgradeMsg" style="margin-top:8px;"></div>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('upgradeClose').addEventListener('click', closeAllPopups);
+  document.getElementById('upgradeBg').addEventListener('click', (e)=>{ if(e.target.id==='upgradeBg') closeAllPopups(); });
+  document.getElementById('upgradeSubmitBtn').addEventListener('click', attemptUpgradeRedeem);
+  document.getElementById('upgradeKeyInput').addEventListener('keydown', e=>{ if(e.key==='Enter') attemptUpgradeRedeem(); });
+  document.getElementById('upgradeKeyInput').focus();
+}
+
+async function attemptUpgradeRedeem(){
+  const btn = document.getElementById('upgradeSubmitBtn');
+  const msg = document.getElementById('upgradeMsg');
+  const keyInput = document.getElementById('upgradeKeyInput');
+  if (!btn || !msg || !keyInput) return; // popup was closed mid-request
+  const key = keyInput.value.trim();
+  if (!key){ msg.textContent='Enter a license key.'; msg.className='license-msg err'; return; }
+  btn.disabled = true;
+  msg.textContent = 'Checking key\u2026'; msg.className = 'license-msg pending';
+  const result = await callVerifyLicense(null, {license_key: key});
+  if (!document.getElementById('upgradeMsg')) return; // popup closed while the request was in flight
+  btn.disabled = false;
+  if (result.error){ msg.textContent = result.error; msg.className = 'license-msg err'; return; }
+  msg.textContent = 'License activated!'; msg.className = 'license-msg ok';
+  await checkLicenseAndRoute(currentUserEmail);
+  closeAllPopups();
 }
 
 /* ---- verify-license edge function (requires an authenticated session) ---- */
