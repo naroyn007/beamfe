@@ -875,9 +875,9 @@ document.getElementById('redeemKeyBtn').addEventListener('click', async ()=>{
   if (!key){ msg.textContent='Enter a license key.'; msg.className='license-msg err'; return; }
   btn.disabled = true;
   msg.textContent = 'Checking key\u2026'; msg.className = 'license-msg pending';
-  const result = await callVerifyLicense(null, {license_key: key});
+ const result = await callVerifyLicense(null, {key: key});
   btn.disabled = false;
-  if (result.error){ msg.textContent = result.error; msg.className = 'license-msg err'; return; }
+  if (result.error || result.valid !== true){ msg.textContent = result.error; msg.className = 'license-msg err'; return; }
   msg.textContent = ''; msg.className = 'license-msg';
   await checkLicenseAndRoute(currentUserEmail);
 });
