@@ -549,7 +549,11 @@
 //   https://xhjqnkpsuyzodgnhhuwb.supabase.co
 // All license/trial checks go through Edge Functions below (plain fetch, no SDK needed —
 // they're deployed with verify_jwt:false so no auth header is required to call them).
-const SUPABASE_URL = 'https://swhilchfrytknrbjhrlj.supabase.co';
+const IS_LOCAL = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
+
+const SUPABASE_URL = IS_LOCAL
+  ? 'https://xhjqnkpsuyzodgnhhuwb.supabase.co'   // DEVELOPMENT
+  : 'https://swhilchfrytknrbjhrlj.supabase.co';  // PRODUCTION
 const LICENSE_STORAGE_KEY = 'beamfe_license_v1';
 
 let currentLicense = null; // {key, label, plan, verifiedAt}
