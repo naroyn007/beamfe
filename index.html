@@ -421,6 +421,13 @@
       <div class="license-note">Already have an account? <a id="showLoginFromSignup">Log in</a></div>
     </div>
 
+    <div id="authResetView" style="display:none;">
+      <div class="license-sub">Set a new password</div>
+      <input type="password" id="authNewPassword" placeholder="New password (min. 6 characters)" autocomplete="new-password">
+      <button class="license-unlock-btn" id="authResetBtn">Set password ▸</button>
+      <div class="license-msg" id="authResetMsg"></div>
+    </div>
+
     <div id="licenseNeededView" style="display:none;">
       <div class="license-sub">Signed in as <span id="licenseNeededEmail"></span></div>
       <div class="license-note" id="licenseNeededReason" style="margin-top:0;"></div>
@@ -567,10 +574,6 @@
 const SUPABASE_URL = 'https://xhjqnkpsuyzodgnhhuwb.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_hrjlXzSh_TZtkb-3ebRbLw_QLD6HAOf';
 const PRODUCT_ID = 'beam-analysis';
-// TODO: set this to wherever the Platform Hub is actually deployed — password-reset emails
-// send people there to pick a new password (the hub already has that screen built; BEAM//FE
-// deliberately doesn't duplicate it). Using the hub's own origin as a placeholder for now.
-const HUB_URL = 'https://REPLACE-WITH-PLATFORM-HUB-URL/';
 
 const sb = (typeof supabase !== 'undefined' && supabase.createClient)
   ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
@@ -578,6 +581,8 @@ const sb = (typeof supabase !== 'undefined' && supabase.createClient)
 
 let currentLicense = null; // {license_type, expires_at}
 let currentUserEmail = null;
+let inPasswordRecovery = false; // true while showing the "set a new password" screen — blocks
+                                  // the normal login/license-check flow from racing past it
 
 function getLicenseWatermarkText(){
   // Watermark only ever shows for trial usage — a paid license produces a clean report
@@ -593,7 +598,14 @@ function hideAllGateViews(){
     if (el) el.style.display = 'none';
   });
 }
+function hideAllGateViews(){
+  ['authLoginView','authSignupView','authResetView','licenseNeededView'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+}
 function showLoginView(msg, msgClass){
+  if (inPasswordRecovery) return; // don't let a slower in-flight check overwrite the reset screen
   const gate = document.getElementById('licenseGate');
   if (gate) gate.style.display = 'flex';
   hideAllGateViews();
@@ -609,7 +621,17 @@ function showSignupView(){
   document.getElementById('authSignupMsg').textContent = '';
   document.getElementById('authSignupMsg').className = 'license-msg';
 }
+function showResetView(){
+  const gate = document.getElementById('licenseGate');
+  if (gate) gate.style.display = 'flex';
+  hideAllGateViews();
+  document.getElementById('authResetView').style.display = 'block';
+  document.getElementById('authResetMsg').textContent = '';
+  document.getElementById('authResetMsg').className = 'license-msg';
+  document.getElementById('authNewPassword').value = '';
+}
 function showLicenseNeededView(email, reasonText){
+  if (inPasswordRecovery) return;
   const gate = document.getElementById('licenseGate');
   if (gate) gate.style.display = 'flex';
   hideAllGateViews();
@@ -679,25 +701,14 @@ async function attemptUpgradeRedeem(){
 }
 
 /* ---- verify-license edge function (requires an authenticated session) ---- */
-const VERIFY_LICENSE_URL = SUPABASE_URL + '/functions/v1/verify-license';
-
 async function callVerifyLicense(action, extra){
   if (!sb) return {error:'License service unavailable — check your internet connection and reload the page.'};
-  const { data: sessionData } = await sb.auth.getSession();
-  const token = sessionData && sessionData.session ? sessionData.session.access_token : null;
-  if (!token) return {error:'Your session has expired — please log in again.'};
-  try{
-    const res = await fetch(VERIFY_LICENSE_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json', 'Authorization':'Bearer '+token},
-      body: JSON.stringify(Object.assign({product_id: PRODUCT_ID, action}, extra||{}))
-    });
-    let body; try{ body = await res.json(); }catch(err){ body = null; }
-    if (!body) return {error:'Unexpected response from the license service.'};
-    return body;
-  }catch(err){
-    return {error:'Could not reach the license service — check your internet connection and try again.'};
-  }
+  const { data, error } = await sb.functions.invoke('verify-license', {
+    body: Object.assign({product_id: PRODUCT_ID, action}, extra||{})
+  });
+  if (error) return {error: error.message || 'Could not reach the license service — check your internet connection and try again.'};
+  if (!data) return {error:'Unexpected response from the license service.'};
+  return data;
 }
 
 async function checkLicenseAndRoute(userEmail){
@@ -782,10 +793,35 @@ document.getElementById('showForgotFromLogin').addEventListener('click', async (
   if (!email){ msg.textContent='Enter your email above first, then click "Forgot password?" again.'; msg.className='license-msg err'; return; }
   if (!sb){ msg.textContent='Service unavailable — check your internet connection and reload.'; msg.className='license-msg err'; return; }
   msg.textContent = 'Sending reset link\u2026'; msg.className='license-msg pending';
-  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: HUB_URL });
+  // Self-contained reset: the link brings them straight back here (not to an external hub) —
+  // the PASSWORD_RECOVERY listener below detects it and shows the "set a new password" screen.
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.href.split('#')[0].split('?')[0]
+  });
   if (error){ msg.textContent = error.message; msg.className='license-msg err'; return; }
   msg.textContent = 'Check your email for a password reset link.'; msg.className='license-msg ok';
 });
+
+document.getElementById('authResetBtn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('authResetBtn');
+  const msg = document.getElementById('authResetMsg');
+  const newPassword = document.getElementById('authNewPassword').value;
+  if (!newPassword || newPassword.length < 6){ msg.textContent='Password must be at least 6 characters.'; msg.className='license-msg err'; return; }
+  if (!sb){ msg.textContent='Service unavailable — check your internet connection and reload.'; msg.className='license-msg err'; return; }
+  btn.disabled = true;
+  msg.textContent = 'Updating\u2026'; msg.className='license-msg pending';
+  const { error } = await sb.auth.updateUser({ password: newPassword });
+  btn.disabled = false;
+  if (error){ msg.textContent = error.message; msg.className='license-msg err'; return; }
+  msg.textContent = 'Password updated \u2713'; msg.className='license-msg ok';
+  inPasswordRecovery = false; // allow the normal gate logic to run again now that we're done
+  setTimeout(async ()=>{
+    const { data } = await sb.auth.getSession();
+    if (data && data.session) await checkLicenseAndRoute(data.session.user.email);
+    else showLoginView();
+  }, 1200);
+});
+document.getElementById('authNewPassword').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('authResetBtn').click(); });
 
 /* ---- Start trial / redeem a purchased key (from the "needs license" view) ---- */
 document.getElementById('startTrialBtn').addEventListener('click', async ()=>{
@@ -818,14 +854,32 @@ document.getElementById('gumroadKeyInput').addEventListener('keydown', e=>{ if(e
 /* ---- Init: restore an existing session if there is one ---- */
 (async function initLicenseGate(){
   if (!sb){ showLoginView('Login service unavailable — check your internet connection and reload the page.', 'err'); return; }
-  const { data } = await sb.auth.getSession();
-  if (data && data.session){
-    await checkLicenseAndRoute(data.session.user.email);
-  } else {
-    showLoginView();
+
+  // A password-reset link arrives with type=recovery in the URL hash. Detect that immediately
+  // so the normal session-check below can't win the race and skip past the reset screen.
+  const hash = window.location.hash || '';
+  if (hash){
+    const params = new URLSearchParams(hash.replace(/^#/, ''));
+    if (params.get('type') === 'recovery'){
+      inPasswordRecovery = true;
+      showResetView();
+    }
   }
+
+  if (!inPasswordRecovery){
+    const { data } = await sb.auth.getSession();
+    if (data && data.session) await checkLicenseAndRoute(data.session.user.email);
+    else showLoginView();
+  }
+
   sb.auth.onAuthStateChange((event, session)=>{
+    if (event === 'PASSWORD_RECOVERY'){
+      inPasswordRecovery = true;
+      showResetView();
+      return; // don't run the normal gate logic — wait for the new-password form
+    }
     if (event === 'SIGNED_OUT'){
+      inPasswordRecovery = false;
       currentLicense = null; currentUserEmail = null;
       renderLicenseFooter();
       showLoginView();
