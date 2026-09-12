@@ -636,7 +636,7 @@ function renderLicenseFooter(){
 }
 
 /* ---- verify-license edge function (requires an authenticated session) ---- */
-const VERIFY_LICENSE_URL = SUPABASE_URL + '/functions/v1/verify-license';
+const VERIFY_LICENSE_URL = SUPABASE_URL + '/functions/v1/beamfe-verify-license';
 
 async function callVerifyLicense(action, extra){
   if (!sb) return {error:'License service unavailable — check your internet connection and reload the page.'};
