@@ -567,12 +567,14 @@
 
 <script>
 /* ======================= LICENSE GATE ======================= */
-// NOTE: pointing at the PRODUCTION Supabase project.
-// If you ever need to point this back at DEVELOPMENT for testing, its values were:
-//   url: https://xhjqnkpsuyzodgnhhuwb.supabase.co
-//   key: sb_publishable_hrjlXzSh_TZtkb-3ebRbLw_QLD6HAOf
-const SUPABASE_URL = 'https://xhjqnkpsuyzodgnhhuwb.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_hrjlXzSh_TZtkb-3ebRbLw_QLD6HAOf';
+// Self-detecting by hostname — one file, works correctly on both localhost and the real
+// production domain (beamfe.roi-engg.com) with no manual swap needed before each push.
+// Same pattern as the Platform Hub and table-leg-calculator. Only an actual
+// localhost/127.0.0.1 hostname uses DEVELOPMENT; anything else (including a bare file://
+// open with no hostname) falls through to PRODUCTION, the safer default for a real user.
+const IS_LOCAL = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
+const SUPABASE_URL = IS_LOCAL ? 'https://xhjqnkpsuyzodgnhhuwb.supabase.co' : 'https://swhilchfrytknrbjhrlj.supabase.co';
+const SUPABASE_ANON_KEY = IS_LOCAL ? 'sb_publishable_hrjlXzSh_TZtkb-3ebRbLw_QLD6HAOf' : 'sb_publishable_zDYDKYHitwpi-wkDB950Bw_-HgUqFsc';
 const PRODUCT_ID = 'beam-analysis';
 
 const sb = (typeof supabase !== 'undefined' && supabase.createClient)
