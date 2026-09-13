@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BEAM// Finite Beam Analysis</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
   :root{
     --navy-deep:#0A1F3A;
@@ -382,6 +383,9 @@
   .license-msg.ok{color:var(--green);}
   .license-msg.pending{color:var(--blue-line-dim);}
   .license-note{font-size:10.5px;color:var(--blue-line-dim);margin-top:16px;line-height:1.6;}
+  .license-or{font-size:10px;letter-spacing:0.5px;text-transform:uppercase;color:var(--blue-line-dim);text-align:center;margin:16px 0 10px;}
+  .license-unlock-btn-secondary{background:none;border:1px solid var(--cyan);color:var(--cyan);}
+  .license-unlock-btn-secondary:hover{background:rgba(111,214,232,0.08);}
   .license-note a{color:var(--cyan);cursor:pointer;text-decoration:underline;}
   .license-note a:hover{color:#8CE2F0;}
 
@@ -399,21 +403,40 @@
   <div class="license-box">
     <div class="license-brand">BEAM<span>//</span>FE</div>
 
-    <div id="licenseLoginView">
-      <div class="license-sub">Enter your license key to continue</div>
-      <input type="text" id="licenseKeyInput" placeholder="e.g. BEAM-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false">
-      <button class="license-unlock-btn" id="licenseUnlockBtn">Unlock ▸</button>
-      <div class="license-msg" id="licenseMsg"></div>
-      <div class="license-note">Don't have a key? <a id="showTrialSignup">Start a free 30-day trial</a>, or <a href="https://naroyn8.gumroad.com/l/ivfqt" target="_blank" rel="noopener">buy a full license</a>.</div>
+    <div id="authLoginView">
+      <div class="license-sub">Log in to your account</div>
+      <input type="email" id="authLoginEmail" placeholder="Email" autocomplete="username" spellcheck="false">
+      <input type="password" id="authLoginPassword" placeholder="Password" autocomplete="current-password" style="margin-top:8px;">
+      <button class="license-unlock-btn" id="authLoginBtn">Log in ▸</button>
+      <div class="license-msg" id="authLoginMsg"></div>
+      <div class="license-note">New here? <a id="showSignupView">Create an account</a> · <a id="showForgotFromLogin">Forgot password?</a></div>
     </div>
 
-    <div id="licenseTrialView" style="display:none;">
-      <div class="license-sub">Start your free 30-day trial</div>
-      <input type="email" id="trialEmailInput" placeholder="you@company.com" autocomplete="off" spellcheck="false">
-      <input type="text" id="trialLabelInput" placeholder="Name or company (optional)" autocomplete="off" spellcheck="false" style="margin-top:8px;">
-      <button class="license-unlock-btn" id="trialStartBtn">Start Trial ▸</button>
-      <div class="license-msg" id="trialMsg"></div>
-      <div class="license-note">We'll email you a confirmation link to activate it. One trial per email address. <a id="showLoginView">← Back to license key login</a></div>
+    <div id="authSignupView" style="display:none;">
+      <div class="license-sub">Create your account</div>
+      <input type="email" id="authSignupEmail" placeholder="Email" autocomplete="username" spellcheck="false">
+      <input type="password" id="authSignupPassword" placeholder="Password (min. 6 characters)" autocomplete="new-password" style="margin-top:8px;">
+      <button class="license-unlock-btn" id="authSignupBtn">Create account ▸</button>
+      <div class="license-msg" id="authSignupMsg"></div>
+      <div class="license-note">Already have an account? <a id="showLoginFromSignup">Log in</a></div>
+    </div>
+
+    <div id="authResetView" style="display:none;">
+      <div class="license-sub">Set a new password</div>
+      <input type="password" id="authNewPassword" placeholder="New password (min. 6 characters)" autocomplete="new-password">
+      <button class="license-unlock-btn" id="authResetBtn">Set password ▸</button>
+      <div class="license-msg" id="authResetMsg"></div>
+    </div>
+
+    <div id="licenseNeededView" style="display:none;">
+      <div class="license-sub">Signed in as <span id="licenseNeededEmail"></span></div>
+      <div class="license-note" id="licenseNeededReason" style="margin-top:0;"></div>
+      <button class="license-unlock-btn" id="startTrialBtn">Start Free 30-Day Trial ▸</button>
+      <div class="license-msg" id="licenseNeededMsg"></div>
+      <div class="license-or">or enter a purchased license key</div>
+      <input type="text" id="gumroadKeyInput" placeholder="Gumroad license key" autocomplete="off" spellcheck="false">
+      <button class="license-unlock-btn license-unlock-btn-secondary" id="redeemKeyBtn">Redeem Key ▸</button>
+      <div class="license-note">Don't have a key? <a href="https://naroyn8.gumroad.com/l/ivfqt" target="_blank" rel="noopener">Buy a full license</a> · <a id="signOutFromNeeded">Sign out</a></div>
     </div>
   </div>
 </div>
@@ -544,32 +567,82 @@
 
 <script>
 /* ======================= LICENSE GATE ======================= */
-// NOTE: pointing at the PRODUCTION Supabase project — swapped from DEVELOPMENT on go-live.
-// If you ever need to point this back at DEVELOPMENT for testing, its URL was:
-//   https://xhjqnkpsuyzodgnhhuwb.supabase.co
-// All license/trial checks go through Edge Functions below (plain fetch, no SDK needed —
-// they're deployed with verify_jwt:false so no auth header is required to call them).
-const SUPABASE_URL = 'https://swhilchfrytknrbjhrlj.supabase.co';
-const LICENSE_STORAGE_KEY = 'beamfe_license_v1';
+// Self-detecting by hostname — one file, works correctly on both localhost and the real
+// production domain (beamfe.roi-engg.com) with no manual swap needed before each push.
+// Same pattern as the Platform Hub and table-leg-calculator. Only an actual
+// localhost/127.0.0.1 hostname uses DEVELOPMENT; anything else (including a bare file://
+// open with no hostname) falls through to PRODUCTION, the safer default for a real user.
+const IS_LOCAL = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
+const SUPABASE_URL = IS_LOCAL ? 'https://xhjqnkpsuyzodgnhhuwb.supabase.co' : 'https://swhilchfrytknrbjhrlj.supabase.co';
+const SUPABASE_ANON_KEY = IS_LOCAL ? 'sb_publishable_hrjlXzSh_TZtkb-3ebRbLw_QLD6HAOf' : 'sb_publishable_zDYDKYHitwpi-wkDB950Bw_-HgUqFsc';
+const PRODUCT_ID = 'beam-analysis';
 
-let currentLicense = null; // {key, label, plan, verifiedAt}
+const sb = (typeof supabase !== 'undefined' && supabase.createClient)
+  ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+let currentLicense = null; // {license_type, expires_at}
+let currentUserEmail = null;
+let inPasswordRecovery = false; // true while showing the "set a new password" screen — blocks
+                                  // the normal login/license-check flow from racing past it
 
 function getLicenseWatermarkText(){
-  if (!currentLicense || !currentLicense.key) return 'UNLICENSED COPY';
-  if (currentLicense.plan === 'trial') return 'TRIAL VERSION';
-  const tail = currentLicense.key.slice(-4);
-  return (currentLicense.label ? currentLicense.label : 'LICENSED COPY') + '   \u2022   KEY \u2022\u2022\u2022\u2022'+tail;
+  // Watermark only ever shows for trial usage — a paid license produces a clean report
+  // with no stamp at all, which is itself part of the value of upgrading from trial.
+  if (!currentLicense) return 'UNLICENSED COPY';
+  if (currentLicense.license_type === 'trial') return 'TRIAL VERSION';
+  return '';
 }
 
-function showLicenseGate(msg, msgClass){
+function hideAllGateViews(){
+  ['authLoginView','authSignupView','licenseNeededView'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+}
+function hideAllGateViews(){
+  ['authLoginView','authSignupView','authResetView','licenseNeededView'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+}
+function showLoginView(msg, msgClass){
+  if (inPasswordRecovery) return; // don't let a slower in-flight check overwrite the reset screen
   const gate = document.getElementById('licenseGate');
   if (gate) gate.style.display = 'flex';
-  const loginView = document.getElementById('licenseLoginView');
-  const trialView = document.getElementById('licenseTrialView');
-  if (loginView) loginView.style.display = 'block';
-  if (trialView) trialView.style.display = 'none';
-  const m = document.getElementById('licenseMsg');
+  hideAllGateViews();
+  document.getElementById('authLoginView').style.display = 'block';
+  const m = document.getElementById('authLoginMsg');
   if (m){ m.textContent = msg||''; m.className = 'license-msg '+(msgClass||''); }
+}
+function showSignupView(){
+  const gate = document.getElementById('licenseGate');
+  if (gate) gate.style.display = 'flex';
+  hideAllGateViews();
+  document.getElementById('authSignupView').style.display = 'block';
+  document.getElementById('authSignupMsg').textContent = '';
+  document.getElementById('authSignupMsg').className = 'license-msg';
+}
+function showResetView(){
+  const gate = document.getElementById('licenseGate');
+  if (gate) gate.style.display = 'flex';
+  hideAllGateViews();
+  document.getElementById('authResetView').style.display = 'block';
+  document.getElementById('authResetMsg').textContent = '';
+  document.getElementById('authResetMsg').className = 'license-msg';
+  document.getElementById('authNewPassword').value = '';
+}
+function showLicenseNeededView(email, reasonText){
+  if (inPasswordRecovery) return;
+  const gate = document.getElementById('licenseGate');
+  if (gate) gate.style.display = 'flex';
+  hideAllGateViews();
+  document.getElementById('licenseNeededView').style.display = 'block';
+  document.getElementById('licenseNeededEmail').textContent = email || '';
+  document.getElementById('licenseNeededReason').textContent = reasonText || "You don't have an active license for this product yet.";
+  document.getElementById('licenseNeededMsg').textContent = '';
+  document.getElementById('licenseNeededMsg').className = 'license-msg';
+  document.getElementById('gumroadKeyInput').value = '';
 }
 function hideLicenseGate(){
   const gate = document.getElementById('licenseGate');
@@ -579,157 +652,241 @@ function hideLicenseGate(){
 function renderLicenseFooter(){
   const el = document.getElementById('licenseFooter');
   if (!el) return;
-  if (!currentLicense){ el.innerHTML=''; return; }
-  const tail = (currentLicense.key||'').slice(-4);
-  const planTag = currentLicense.plan === 'trial' ? ' <span style="color:var(--amber);">(Trial)</span>' : '';
-  el.innerHTML = 'Licensed to: <b>'+esc(currentLicense.label || 'Registered user')+'</b>'+planTag+' (key \u00b7\u00b7\u00b7\u00b7'+esc(tail)+') &middot; <a id="licenseSignOut">Sign out / change key</a>';
+  if (!currentLicense || !currentUserEmail){ el.innerHTML=''; return; }
+  const planTag = currentLicense.license_type === 'trial' ? ' <span style="color:var(--amber);">(Trial)</span>' : '';
+  el.innerHTML = 'Signed in as: <b>'+esc(currentUserEmail)+'</b>'+planTag+' &middot; <a id="upgradeLicenseLink">Enter license key</a> &middot; <a id="licenseSignOut">Sign out</a>';
   const so = document.getElementById('licenseSignOut');
-  if (so) so.addEventListener('click', signOutLicense);
+  if (so) so.addEventListener('click', doSignOut);
+  const up = document.getElementById('upgradeLicenseLink');
+  if (up) up.addEventListener('click', showUpgradePopup);
 }
 
-function signOutLicense(){
-  try{ localStorage.removeItem(LICENSE_STORAGE_KEY); }catch(err){}
-  currentLicense = null;
-  renderLicenseFooter();
-  showLicenseGate();
-  const input = document.getElementById('licenseKeyInput');
-  if (input){ input.value=''; input.focus(); }
+/* ---- Enter/redeem a license key from inside the already-unlocked app — e.g. to upgrade
+   from a trial to a purchased key, without needing to sign out first ---- */
+function showUpgradePopup(){
+  const root = document.getElementById('tableOverlayRoot');
+  root.innerHTML = `
+    <div class="table-overlay-bg" id="upgradeBg">
+      <div class="table-overlay" style="max-width:380px;">
+        <div class="to-head"><span class="to-title">Enter License Key</span><span class="fp-close" id="upgradeClose">✕</span></div>
+        <div class="to-body">
+          <div class="field-note" style="margin-bottom:10px;">Enter a purchased Gumroad license key${currentLicense && currentLicense.license_type==='trial' ? ' to upgrade from your trial' : ''}.</div>
+          <input type="text" id="upgradeKeyInput" placeholder="Gumroad license key" style="width:100%;box-sizing:border-box;" autocomplete="off" spellcheck="false">
+          <button class="qa-btn" id="upgradeSubmitBtn" style="margin-top:10px;width:100%;">Redeem Key ▸</button>
+          <div class="license-msg" id="upgradeMsg" style="margin-top:8px;"></div>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('upgradeClose').addEventListener('click', closeAllPopups);
+  document.getElementById('upgradeBg').addEventListener('click', (e)=>{ if(e.target.id==='upgradeBg') closeAllPopups(); });
+  document.getElementById('upgradeSubmitBtn').addEventListener('click', attemptUpgradeRedeem);
+  document.getElementById('upgradeKeyInput').addEventListener('keydown', e=>{ if(e.key==='Enter') attemptUpgradeRedeem(); });
+  document.getElementById('upgradeKeyInput').focus();
 }
 
-const EDGE_FN_VERIFY_LICENSE_URL = SUPABASE_URL + '/functions/v1/beamfe-verify-license';
-
-async function verifyLicenseKey(key){
-  try{
-    const res = await fetch(EDGE_FN_VERIFY_LICENSE_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({key})
-    });
-    let body;
-    try{ body = await res.json(); }catch(err){ body = null; }
-    if (!body) return {valid:false, message:'Unexpected response from the license service.'};
-    return body; // {valid, label, plan, message}
-  }catch(err){
-    return {valid:false, message:'Could not reach the license service — check your internet connection and try again.'};
-  }
-}
-
-async function attemptUnlock(key){
-  const btn = document.getElementById('licenseUnlockBtn');
-  const msg = document.getElementById('licenseMsg');
-  key = (key||'').trim();
+async function attemptUpgradeRedeem(){
+  const btn = document.getElementById('upgradeSubmitBtn');
+  const msg = document.getElementById('upgradeMsg');
+  const keyInput = document.getElementById('upgradeKeyInput');
+  if (!btn || !msg || !keyInput) return; // popup was closed mid-request
+  const key = keyInput.value.trim();
   if (!key){ msg.textContent='Enter a license key.'; msg.className='license-msg err'; return; }
   btn.disabled = true;
-  msg.textContent = 'Checking\u2026'; msg.className = 'license-msg pending';
-  const result = await verifyLicenseKey(key);
+  msg.textContent = 'Checking key\u2026'; msg.className = 'license-msg pending';
+  const result = await callVerifyLicense(null, {license_key: key});
+  if (!document.getElementById('upgradeMsg')) return; // popup closed while the request was in flight
   btn.disabled = false;
+  if (result.error){ msg.textContent = result.error; msg.className = 'license-msg err'; return; }
+  msg.textContent = 'License activated!'; msg.className = 'license-msg ok';
+  await checkLicenseAndRoute(currentUserEmail);
+  closeAllPopups();
+}
+
+/* ---- verify-license edge function (requires an authenticated session) ---- */
+async function callVerifyLicense(action, extra){
+  if (!sb) return {error:'License service unavailable — check your internet connection and reload the page.'};
+  const { data, error } = await sb.functions.invoke('verify-license', {
+    body: Object.assign({product_id: PRODUCT_ID, action}, extra||{})
+  });
+  if (error) return {error: error.message || 'Could not reach the license service — check your internet connection and try again.'};
+  if (!data) return {error:'Unexpected response from the license service.'};
+  return data;
+}
+
+async function checkLicenseAndRoute(userEmail){
+  const result = await callVerifyLicense('check_license');
   if (result.valid){
-    currentLicense = {key, label: result.label||null, plan: result.plan||'full', verifiedAt: new Date().toISOString()};
-    try{ localStorage.setItem(LICENSE_STORAGE_KEY, JSON.stringify(currentLicense)); }catch(err){}
-    msg.textContent = ''; msg.className='license-msg';
+    currentLicense = {license_type: result.license_type, expires_at: result.expires_at};
+    currentUserEmail = userEmail;
     hideLicenseGate();
     renderLicenseFooter();
-  } else {
-    msg.textContent = result.message || 'Invalid license key.';
-    msg.className = 'license-msg err';
+    return true;
   }
+  currentLicense = null;
+  currentUserEmail = userEmail;
+  const reason = result.reason === 'expired'
+    ? 'Your ' + (result.license_type||'license') + ' has expired.'
+    : "You don't have an active license for this product yet.";
+  showLicenseNeededView(userEmail, reason);
+  return false;
 }
 
-document.getElementById('licenseUnlockBtn').addEventListener('click', ()=>{
-  attemptUnlock(document.getElementById('licenseKeyInput').value);
-});
-document.getElementById('licenseKeyInput').addEventListener('keydown', (e)=>{
-  if (e.key==='Enter') attemptUnlock(document.getElementById('licenseKeyInput').value);
-});
-
-/* ---- Self-serve trial signup ---- */
-function showTrialView(){
-  document.getElementById('licenseLoginView').style.display = 'none';
-  document.getElementById('licenseTrialView').style.display = 'block';
-  document.getElementById('trialMsg').textContent = '';
-  document.getElementById('trialMsg').className = 'license-msg';
-  document.getElementById('trialEmailInput').focus();
-}
-function showLoginViewGate(){
-  document.getElementById('licenseTrialView').style.display = 'none';
-  document.getElementById('licenseLoginView').style.display = 'block';
-  document.getElementById('licenseMsg').textContent = '';
-  document.getElementById('licenseMsg').className = 'license-msg';
-  document.getElementById('licenseKeyInput').focus();
-}
-document.getElementById('showTrialSignup').addEventListener('click', showTrialView);
-document.getElementById('showLoginView').addEventListener('click', showLoginViewGate);
-
-const EDGE_FN_START_TRIAL_URL = SUPABASE_URL + '/functions/v1/beamfe-start-trial';
-
-async function startTrial(email, label){
-  try{
-    const res = await fetch(EDGE_FN_START_TRIAL_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({email, label: label||null})
-    });
-    let body;
-    try{ body = await res.json(); }catch(err){ body = null; }
-    if (!body) return {success:false, message:'Unexpected response from the trial service.'};
-    return body; // {success, message}
-  }catch(err){
-    return {success:false, message:'Could not reach the trial service — check your internet connection and try again.'};
-  }
+async function doSignOut(){
+  if (sb) await sb.auth.signOut();
+  currentLicense = null;
+  currentUserEmail = null;
+  renderLicenseFooter();
+  showLoginView();
 }
 
-async function attemptStartTrial(){
-  const btn = document.getElementById('trialStartBtn');
-  const msg = document.getElementById('trialMsg');
-  const email = document.getElementById('trialEmailInput').value.trim();
-  const label = document.getElementById('trialLabelInput').value.trim();
-  if (!email){ msg.textContent='Enter your email address.'; msg.className='license-msg err'; return; }
+/* ---- Login / Signup / Forgot password ---- */
+document.getElementById('showSignupView').addEventListener('click', showSignupView);
+document.getElementById('showLoginFromSignup').addEventListener('click', ()=>showLoginView());
+document.getElementById('signOutFromNeeded').addEventListener('click', doSignOut);
+
+async function attemptLogin(){
+  const btn = document.getElementById('authLoginBtn');
+  const msg = document.getElementById('authLoginMsg');
+  const email = document.getElementById('authLoginEmail').value.trim();
+  const password = document.getElementById('authLoginPassword').value;
+  if (!email || !password){ msg.textContent='Enter your email and password.'; msg.className='license-msg err'; return; }
+  if (!sb){ msg.textContent='Login service unavailable — check your internet connection and reload.'; msg.className='license-msg err'; return; }
   btn.disabled = true;
-  msg.textContent = 'Sending confirmation email\u2026'; msg.className = 'license-msg pending';
-  const result = await startTrial(email, label);
+  msg.textContent = 'Signing in\u2026'; msg.className = 'license-msg pending';
+  const { data, error } = await sb.auth.signInWithPassword({email, password});
   btn.disabled = false;
-  if (result.success){
-    msg.textContent = result.message || 'Check your email to confirm and activate your trial.';
-    msg.className = 'license-msg ok';
-    document.getElementById('trialEmailInput').value = '';
-    document.getElementById('trialLabelInput').value = '';
-  } else {
-    msg.textContent = result.message || 'Could not start a trial with that email.';
-    msg.className = 'license-msg err';
-  }
+  if (error){ msg.textContent = error.message; msg.className = 'license-msg err'; return; }
+  msg.textContent = ''; msg.className = 'license-msg';
+  await checkLicenseAndRoute(data.user.email);
 }
-document.getElementById('trialStartBtn').addEventListener('click', attemptStartTrial);
-document.getElementById('trialEmailInput').addEventListener('keydown', (e)=>{ if (e.key==='Enter') attemptStartTrial(); });
-document.getElementById('trialLabelInput').addEventListener('keydown', (e)=>{ if (e.key==='Enter') attemptStartTrial(); });
+document.getElementById('authLoginBtn').addEventListener('click', attemptLogin);
+document.getElementById('authLoginPassword').addEventListener('keydown', e=>{ if(e.key==='Enter') attemptLogin(); });
 
-// On load: trust a cached valid license immediately so returning users aren't blocked on a
-// network round trip every time, then silently re-verify in the background — if it turns
-// out to have been revoked/expired since, sign them out and show the gate again.
-(function initLicenseGate(){
-  let cached = null;
-  try{
-    const raw = localStorage.getItem(LICENSE_STORAGE_KEY);
-    if (raw) cached = JSON.parse(raw);
-  }catch(err){ cached = null; }
-
-  if (cached && cached.key){
-    currentLicense = cached;
-    hideLicenseGate();
-    renderLicenseFooter();
-    verifyLicenseKey(cached.key).then(result=>{
-      if (!result.valid){
-        signOutLicense();
-        showLicenseGate(result.message || 'Your license is no longer valid — please re-enter your key.', 'err');
-      } else if (result.label !== cached.label || result.plan !== cached.plan){
-        currentLicense.label = result.label;
-        currentLicense.plan = result.plan||'full';
-        try{ localStorage.setItem(LICENSE_STORAGE_KEY, JSON.stringify(currentLicense)); }catch(err){}
-        renderLicenseFooter();
-      }
-    });
-  } else {
-    showLicenseGate();
+async function attemptSignup(){
+  const btn = document.getElementById('authSignupBtn');
+  const msg = document.getElementById('authSignupMsg');
+  const email = document.getElementById('authSignupEmail').value.trim();
+  const password = document.getElementById('authSignupPassword').value;
+  if (!email || !password){ msg.textContent='Enter an email and password.'; msg.className='license-msg err'; return; }
+  if (password.length < 6){ msg.textContent='Password must be at least 6 characters.'; msg.className='license-msg err'; return; }
+  if (!sb){ msg.textContent='Signup service unavailable — check your internet connection and reload.'; msg.className='license-msg err'; return; }
+  btn.disabled = true;
+  msg.textContent = 'Creating your account\u2026'; msg.className = 'license-msg pending';
+  const { data, error } = await sb.auth.signUp({email, password});
+  btn.disabled = false;
+  if (error){ msg.textContent = error.message; msg.className = 'license-msg err'; return; }
+  if (!data.session){
+    // Email confirmation is required by this Supabase project's auth settings —
+    // there's no session yet, so there's nothing to check a license against until
+    // they confirm and log in.
+    msg.textContent = 'Check your email to confirm your account, then log in.';
+    msg.className = 'license-msg ok';
+    return;
   }
+  msg.textContent = ''; msg.className = 'license-msg';
+  await checkLicenseAndRoute(data.user.email);
+}
+document.getElementById('authSignupBtn').addEventListener('click', attemptSignup);
+document.getElementById('authSignupPassword').addEventListener('keydown', e=>{ if(e.key==='Enter') attemptSignup(); });
+
+document.getElementById('showForgotFromLogin').addEventListener('click', async ()=>{
+  const email = document.getElementById('authLoginEmail').value.trim();
+  const msg = document.getElementById('authLoginMsg');
+  if (!email){ msg.textContent='Enter your email above first, then click "Forgot password?" again.'; msg.className='license-msg err'; return; }
+  if (!sb){ msg.textContent='Service unavailable — check your internet connection and reload.'; msg.className='license-msg err'; return; }
+  msg.textContent = 'Sending reset link\u2026'; msg.className='license-msg pending';
+  // Self-contained reset: the link brings them straight back here (not to an external hub) —
+  // the PASSWORD_RECOVERY listener below detects it and shows the "set a new password" screen.
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.href.split('#')[0].split('?')[0]
+  });
+  if (error){ msg.textContent = error.message; msg.className='license-msg err'; return; }
+  msg.textContent = 'Check your email for a password reset link.'; msg.className='license-msg ok';
+});
+
+document.getElementById('authResetBtn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('authResetBtn');
+  const msg = document.getElementById('authResetMsg');
+  const newPassword = document.getElementById('authNewPassword').value;
+  if (!newPassword || newPassword.length < 6){ msg.textContent='Password must be at least 6 characters.'; msg.className='license-msg err'; return; }
+  if (!sb){ msg.textContent='Service unavailable — check your internet connection and reload.'; msg.className='license-msg err'; return; }
+  btn.disabled = true;
+  msg.textContent = 'Updating\u2026'; msg.className='license-msg pending';
+  const { error } = await sb.auth.updateUser({ password: newPassword });
+  btn.disabled = false;
+  if (error){ msg.textContent = error.message; msg.className='license-msg err'; return; }
+  msg.textContent = 'Password updated \u2713'; msg.className='license-msg ok';
+  inPasswordRecovery = false; // allow the normal gate logic to run again now that we're done
+  setTimeout(async ()=>{
+    const { data } = await sb.auth.getSession();
+    if (data && data.session) await checkLicenseAndRoute(data.session.user.email);
+    else showLoginView();
+  }, 1200);
+});
+document.getElementById('authNewPassword').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('authResetBtn').click(); });
+
+/* ---- Start trial / redeem a purchased key (from the "needs license" view) ---- */
+document.getElementById('startTrialBtn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('startTrialBtn');
+  const msg = document.getElementById('licenseNeededMsg');
+  btn.disabled = true;
+  msg.textContent = 'Starting your trial\u2026'; msg.className = 'license-msg pending';
+  const result = await callVerifyLicense('start_trial');
+  btn.disabled = false;
+  if (result.error){ msg.textContent = result.error; msg.className = 'license-msg err'; return; }
+  msg.textContent = ''; msg.className = 'license-msg';
+  await checkLicenseAndRoute(currentUserEmail);
+});
+
+document.getElementById('redeemKeyBtn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('redeemKeyBtn');
+  const msg = document.getElementById('licenseNeededMsg');
+  const key = document.getElementById('gumroadKeyInput').value.trim();
+  if (!key){ msg.textContent='Enter a license key.'; msg.className='license-msg err'; return; }
+  btn.disabled = true;
+  msg.textContent = 'Checking key\u2026'; msg.className = 'license-msg pending';
+  const result = await callVerifyLicense(null, {license_key: key});
+  btn.disabled = false;
+  if (result.error){ msg.textContent = result.error; msg.className = 'license-msg err'; return; }
+  msg.textContent = ''; msg.className = 'license-msg';
+  await checkLicenseAndRoute(currentUserEmail);
+});
+document.getElementById('gumroadKeyInput').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('redeemKeyBtn').click(); });
+
+/* ---- Init: restore an existing session if there is one ---- */
+(async function initLicenseGate(){
+  if (!sb){ showLoginView('Login service unavailable — check your internet connection and reload the page.', 'err'); return; }
+
+  // A password-reset link arrives with type=recovery in the URL hash. Detect that immediately
+  // so the normal session-check below can't win the race and skip past the reset screen.
+  const hash = window.location.hash || '';
+  if (hash){
+    const params = new URLSearchParams(hash.replace(/^#/, ''));
+    if (params.get('type') === 'recovery'){
+      inPasswordRecovery = true;
+      showResetView();
+    }
+  }
+
+  if (!inPasswordRecovery){
+    const { data } = await sb.auth.getSession();
+    if (data && data.session) await checkLicenseAndRoute(data.session.user.email);
+    else showLoginView();
+  }
+
+  sb.auth.onAuthStateChange((event, session)=>{
+    if (event === 'PASSWORD_RECOVERY'){
+      inPasswordRecovery = true;
+      showResetView();
+      return; // don't run the normal gate logic — wait for the new-password form
+    }
+    if (event === 'SIGNED_OUT'){
+      inPasswordRecovery = false;
+      currentLicense = null; currentUserEmail = null;
+      renderLicenseFooter();
+      showLoginView();
+    }
+  });
 })();
 
 /* ======================= STATE ======================= */
@@ -2211,7 +2368,7 @@ function buildPrintReport(R){
 
   root.innerHTML = `
     <div class="pr-page">
-      <div class="pr-watermark">${esc(watermarkText)}</div>
+      <div class="pr-watermark">${watermarkText ? esc(watermarkText) : ''}</div>
       ${pageHeaderHtml('1 of 2')}
 
       <div class="pr-section-title">1. Beam schematic</div>
