@@ -390,7 +390,7 @@
   .license-note a:hover{color:#8CE2F0;}
 
   .license-footer{
-    max-width:1320px;margin:16px auto 0;text-align:right;font-size:11px;color:var(--blue-line-dim);
+    max-width:none;margin:0 0 10px;text-align:right;font-size:11px;color:var(--blue-line-dim);padding:7px 0;border-bottom:1px solid var(--blue-line-dim);display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:10px;
   }
   .license-footer b{color:var(--cyan);}
   .license-footer a{color:var(--blue-line);cursor:pointer;text-decoration:underline;}
@@ -399,7 +399,7 @@
 </head>
 <body>
 
-<div id="licenseGate" class="license-gate">
+<div class="license-footer" id="licenseTopBar"></div>\n\n<div id="licenseGate" class="license-gate">
   <div class="license-box">
     <div class="license-brand">BEAM<span>//</span>FE</div>
 
@@ -711,7 +711,7 @@ function hideLicenseGate(){
 }
 
 function renderLicenseFooter(){
-  const el = document.getElementById('licenseFooter');
+  const el = document.getElementById('licenseTopBar');
   if (!el) return;
   if (!currentLicense || !currentUserEmail){ el.innerHTML=''; return; }
   const planTag = currentLicense.license_type === 'trial' ? ' <span style="color:var(--amber);">(Trial)</span>' : '';
