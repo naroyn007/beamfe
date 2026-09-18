@@ -671,9 +671,25 @@ function hideLicenseGate(){
 
 function renderLicenseFooter(){
   const el = document.getElementById('licenseFooter');
+  const statusEl = document.getElementById('authBarStatus');
+  const emailEl = document.getElementById('authBarEmail');
+  const logoutEl = document.getElementById('logoutBtn');
   if (!el) return;
-  if (!currentLicense || !currentUserEmail){ el.innerHTML=''; return; }
-  const planTag = currentLicense.license_type === 'trial' ? ' <span style="color:var(--amber);">(Trial)</span>' : '';
+  if (!currentLicense || !currentUserEmail){
+    el.innerHTML='';
+    if (statusEl) statusEl.textContent='LICENSE • SIGN IN';
+    if (emailEl) emailEl.textContent='';
+    if (logoutEl) logoutEl.style.display='none';
+    return;
+  }
+  const isTrial = currentLicense.license_type === 'trial';
+  if (statusEl) statusEl.textContent = isTrial ? 'LICENSE • TRIAL' : 'LICENSE • PAID';
+  if (emailEl) emailEl.textContent = currentUserEmail;
+  if (logoutEl){
+    logoutEl.style.display='';
+    logoutEl.onclick = doSignOut;
+  }
+  const planTag = isTrial ? ' <span style="color:var(--amber);">(Trial)</span>' : '';
   el.innerHTML = 'Signed in as: <b>'+esc(currentUserEmail)+'</b>'+planTag+' &middot; <a id="upgradeLicenseLink">Enter license key</a> &middot; <a id="licenseSignOut">Sign out</a>';
   const so = document.getElementById('licenseSignOut');
   if (so) so.addEventListener('click', doSignOut);
