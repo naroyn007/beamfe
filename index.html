@@ -572,13 +572,72 @@
 // Same pattern as the Platform Hub and table-leg-calculator. Only an actual
 // localhost/127.0.0.1 hostname uses DEVELOPMENT; anything else (including a bare file://
 // open with no hostname) falls through to PRODUCTION, the safer default for a real user.
-const IS_LOCAL = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
+const IS_LOCAL_DEV =
+  ["localhost", "127.0.0.1"].includes(window.location.hostname) ||
+  window.location.hostname.endsWith(".app.github.dev");
+
+const SUPABASE_URL_DEV = 'https://xhjqnkpsuyzodgnhhuwb.supabase.co';
+const SUPABASE_ANON_KEY_DEV = 'sb_publishable_hrjlXzSh_TZtkb-3ebRbLw_QLD6HAOf';
+const SUPABASE_URL_PROD = 'https://swhilchfrytknrbjhrlj.supabase.co';
+const SUPABASE_ANON_KEY_PROD = 'sb_publishable_zDYDKYHitwpi-wkDB950Bw_-HgUqFsc';
+const SUPABASE_URL = IS_LOCAL_DEV ? SUPABASE_URL_DEV : SUPABASE_URL_PROD;
+const SUPABASE_ANON_KEY = IS_LOCAL_DEV ? SUPABASE_ANON_KEY_DEV : SUPABASE_ANON_KEY_PROD;
+const PRODUCT_ID = 'beam-analysis';
+
+// Shared auth cookie — matches the Platform Hub / Cuplok / AF Estimator SSO pattern.
+// Production subdomains share the Supabase session; local development keeps the SDK's
+// normal localStorage behavior.
+const COOKIE_DOMAIN = ".roi-engg.com";
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
+
+function setCookie(name, value, maxAge) {
+  const parts = [
+    `${name}=${encodeURIComponent(value)}`,
+    "path=/",
+    `domain=${COOKIE_DOMAIN}`,
+    `max-age=${maxAge}`,
+    "samesite=Lax"
+  ];
+  if (location.protocol === "https:") parts.push("secure");
+  document.cookie = parts.join("; ");
+}
+
+function getCookie(name) {
+  const escaped = name.replace(/[.$?*|{}()[\\]\\\\/+^]/g, "\\\\const IS_LOCAL = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
 const SUPABASE_URL = IS_LOCAL ? 'https://xhjqnkpsuyzodgnhhuwb.supabase.co' : 'https://swhilchfrytknrbjhrlj.supabase.co';
 const SUPABASE_ANON_KEY = IS_LOCAL ? 'sb_publishable_hrjlXzSh_TZtkb-3ebRbLw_QLD6HAOf' : 'sb_publishable_zDYDKYHitwpi-wkDB950Bw_-HgUqFsc';
 const PRODUCT_ID = 'beam-analysis';
 
 const sb = (typeof supabase !== 'undefined' && supabase.createClient)
   ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;");
+  const match = document.cookie.match(new RegExp("(?:^|; )" + escaped + "=([^;]*)"));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function deleteCookie(name) {
+  document.cookie = `${name}=; path=/; domain=${COOKIE_DOMAIN}; max-age=0`;
+}
+
+const crossSubdomainCookieStorage = {
+  getItem: key => getCookie(key),
+  setItem: (key, value) => setCookie(key, value, COOKIE_MAX_AGE),
+  removeItem: key => deleteCookie(key)
+};
+
+// Platform Hub link — environment-aware like Cuplok and AF Estimator.
+const HUB_URL_DEV = "http://localhost:5500";
+const HUB_URL_PROD = "https://hub.roi-engg.com";
+const HUB_URL = IS_LOCAL_DEV ? HUB_URL_DEV : HUB_URL_PROD;
+
+const sb = (typeof supabase !== 'undefined' && supabase.createClient)
+  ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        storage: IS_LOCAL_DEV ? undefined : crossSubdomainCookieStorage,
+        persistSession: true,
+        autoRefreshToken: true
+      }
+    })
   : null;
 
 let currentLicense = null; // {license_type, expires_at}
@@ -654,7 +713,12 @@ function renderLicenseFooter(){
   if (!el) return;
   if (!currentLicense || !currentUserEmail){ el.innerHTML=''; return; }
   const planTag = currentLicense.license_type === 'trial' ? ' <span style="color:var(--amber);">(Trial)</span>' : '';
-  el.innerHTML = 'Signed in as: <b>'+esc(currentUserEmail)+'</b>'+planTag+' &middot; <a id="upgradeLicenseLink">Enter license key</a> &middot; <a id="licenseSignOut">Sign out</a>';
+  el.innerHTML =
+    '<span style="color:var(--cyan);font-weight:600;">BEAM//FE • LICENSE ACTIVE</span>' +
+    ' &middot; <b>'+esc(currentUserEmail)+'</b>' + planTag +
+    ' &middot; <a href="'+HUB_URL+'">Platform Hub</a>' +
+    ' &middot; <a id="upgradeLicenseLink">Enter license key</a>' +
+    ' &middot; <a id="licenseSignOut">Sign out</a>';
   const so = document.getElementById('licenseSignOut');
   if (so) so.addEventListener('click', doSignOut);
   const up = document.getElementById('upgradeLicenseLink');
