@@ -1791,51 +1791,34 @@ function drawSchematic(R, canvasId, printMode, canvasOpts){
 
     // Magnitude labels double as drag handles: drag vertically on one to change that end's
     // value directly, reading off the same px-per-unit scale the arrows themselves use
-    // (schematicGeom.arrowSpace/maxUdlMag). A uniform load shows one shared label (dragging
-    // it bumps both ends together, keeping it uniform); a trapezoidal load — where the two
-    // ends already differ — shows one label per end so each can be adjusted independently,
-    // which is the case a single shared handle can't express.
-    const uniform = u.magStart===u.magEnd;
+    // (schematicGeom.arrowSpace/maxUdlMag). Both ends always get their own label — even when
+    // equal — so an equal load can be dragged apart into a trapezoid from either end, and so
+    // it's obvious at a glance what each end is currently carrying.
     const unitSuffix = u.mode==='area' ? ' kN/m\u00b2\u00d7trib' : ' kN/m';
-    if (uniform){
-      const hlM = isHovered('udl-mag', i, 'both');
-      if (hlM){ ctx.save(); ctx.shadowColor='rgba(255,201,59,0.85)'; ctx.shadowBlur=10; }
-      ctx.fillStyle = hlM ? HOVER_GLOW : T.udlText;
-      const label = u.magStart + unitSuffix;
-      const ly = Math.min(topYStart, topYEnd) - 4;
-      const lx = X(u.start)+2;
-      ctx.fillText(label, lx, ly);
-      if (hlM) ctx.restore();
-      if (!printMode){
-        const tw = ctx.measureText(label).width;
-        hitRegions.push({type:'udl-mag', index:i, sub:'both', x1:lx-2, y1:ly-11, x2:lx+tw+2, y2:ly+3});
-      }
-    } else {
-      const hlS = isHovered('udl-mag', i, 'start');
-      if (hlS){ ctx.save(); ctx.shadowColor='rgba(255,201,59,0.85)'; ctx.shadowBlur=10; }
-      ctx.fillStyle = hlS ? HOVER_GLOW : T.udlText;
-      const labelS = u.magStart + unitSuffix;
-      const lyS = topYStart - 4;
-      const lxS = X(u.start)+2;
-      ctx.fillText(labelS, lxS, lyS);
-      if (hlS) ctx.restore();
-      if (!printMode){
-        const twS = ctx.measureText(labelS).width;
-        hitRegions.push({type:'udl-mag', index:i, sub:'start', x1:lxS-2, y1:lyS-11, x2:lxS+twS+2, y2:lyS+3});
-      }
+    const hlS = isHovered('udl-mag', i, 'start');
+    if (hlS){ ctx.save(); ctx.shadowColor='rgba(255,201,59,0.85)'; ctx.shadowBlur=10; }
+    ctx.fillStyle = hlS ? HOVER_GLOW : T.udlText;
+    const labelS = u.magStart + unitSuffix;
+    const lyS = topYStart - 4;
+    const lxS = X(u.start)+2;
+    ctx.fillText(labelS, lxS, lyS);
+    if (hlS) ctx.restore();
+    if (!printMode){
+      const twS = ctx.measureText(labelS).width;
+      hitRegions.push({type:'udl-mag', index:i, sub:'start', x1:lxS-2, y1:lyS-11, x2:lxS+twS+2, y2:lyS+3});
+    }
 
-      const hlE = isHovered('udl-mag', i, 'end');
-      if (hlE){ ctx.save(); ctx.shadowColor='rgba(255,201,59,0.85)'; ctx.shadowBlur=10; }
-      ctx.fillStyle = hlE ? HOVER_GLOW : T.udlText;
-      const labelE = u.magEnd + unitSuffix;
-      const lyE = topYEnd - 4;
-      const twE = ctx.measureText(labelE).width;
-      const lxE = X(u.end) - 2 - twE; // right-aligned so it stays inside the span near the end edge
-      ctx.fillText(labelE, lxE, lyE);
-      if (hlE) ctx.restore();
-      if (!printMode){
-        hitRegions.push({type:'udl-mag', index:i, sub:'end', x1:lxE-2, y1:lyE-11, x2:lxE+twE+2, y2:lyE+3});
-      }
+    const hlE = isHovered('udl-mag', i, 'end');
+    if (hlE){ ctx.save(); ctx.shadowColor='rgba(255,201,59,0.85)'; ctx.shadowBlur=10; }
+    ctx.fillStyle = hlE ? HOVER_GLOW : T.udlText;
+    const labelE = u.magEnd + unitSuffix;
+    const lyE = topYEnd - 4;
+    const twE = ctx.measureText(labelE).width;
+    const lxE = X(u.end) - 2 - twE; // right-aligned so it stays inside the span near the end edge
+    ctx.fillText(labelE, lxE, lyE);
+    if (hlE) ctx.restore();
+    if (!printMode){
+      hitRegions.push({type:'udl-mag', index:i, sub:'end', x1:lxE-2, y1:lyE-11, x2:lxE+twE+2, y2:lyE+3});
     }
 
     if (!printMode) hitRegions.push({type:'udl', index:i, x1:X(u.start), y1:Math.min(topYStart,topYEnd)-14, x2:X(u.end), y2:baseY-2});
@@ -1846,16 +1829,31 @@ function drawSchematic(R, canvasId, printMode, canvasOpts){
   // own line 15px further up puts its label safely clear of even a max-magnitude UDL, instead
   // of sharing the same vertical band and reading as text stamped inside the UDL's fill.
   const PL_TOP = top - 15;
+  const maxPointLoadMag = Math.max(1e-6, ...R.pointLoads.map(p=>Math.abs(p.mag)));
+  if (!printMode) Object.assign(schematicGeom, {maxPointLoadMag});
   R.pointLoads.forEach((p,i)=>{
-    const hl = isHovered('pointload', i);
-    if (hl){ ctx.save(); ctx.shadowColor='rgba(255,201,59,0.85)'; ctx.shadowBlur=10; }
+    const hlBody = isHovered('pointload', i, undefined);
+    if (hlBody){ ctx.save(); ctx.shadowColor='rgba(255,201,59,0.85)'; ctx.shadowBlur=10; }
     const x = X(p.pos);
-    ctx.strokeStyle = hl ? HOVER_GLOW : T.pointLoad; ctx.fillStyle = hl ? HOVER_GLOW : T.pointLoad; ctx.lineWidth = 2;
+    ctx.strokeStyle = hlBody ? HOVER_GLOW : T.pointLoad; ctx.fillStyle = hlBody ? HOVER_GLOW : T.pointLoad; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(x, PL_TOP); ctx.lineTo(x, baseY-2); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x,baseY-2); ctx.lineTo(x-4,baseY-10); ctx.lineTo(x+4,baseY-10); ctx.closePath(); ctx.fill();
-    ctx.fillText(p.mag+' kN', x-14, PL_TOP-4);
-    if (hl) ctx.restore();
-    if (!printMode) hitRegions.push({type:'pointload', index:i, x1:x-14, y1:PL_TOP-10, x2:x+14, y2:baseY-1});
+    if (hlBody) ctx.restore();
+
+    // The value label is its own drag handle (vertical drag changes magnitude), separate from
+    // the line/arrowhead above (horizontal drag on those moves the load's position) — same
+    // split as the UDL magnitude labels vs. the UDL body.
+    const hlMag = isHovered('pointload-mag', i, undefined);
+    if (hlMag){ ctx.save(); ctx.shadowColor='rgba(255,201,59,0.85)'; ctx.shadowBlur=10; }
+    ctx.fillStyle = hlMag ? HOVER_GLOW : T.pointLoad;
+    const plLabel = p.mag+' kN';
+    ctx.fillText(plLabel, x-14, PL_TOP-4);
+    if (hlMag) ctx.restore();
+    if (!printMode){
+      const twP = ctx.measureText(plLabel).width;
+      hitRegions.push({type:'pointload-mag', index:i, x1:x-16, y1:PL_TOP-15, x2:x-14+twP+2, y2:PL_TOP+1});
+      hitRegions.push({type:'pointload', index:i, x1:x-14, y1:PL_TOP, x2:x+14, y2:baseY-1});
+    }
   });
 
   // supports
@@ -1966,12 +1964,15 @@ function drawSchematic(R, canvasId, printMode, canvasOpts){
   if (!printMode && draggingItem){
     let label;
     let dx;
-    if (draggingItem.type==='udl-mag'){
+    if (draggingItem.type==='pointload-mag'){
+      const p = R.pointLoads[draggingItem.index];
+      label = 'mag = '+fmt(p.mag,2)+' kN';
+      dx = X(p.pos);
+    } else if (draggingItem.type==='udl-mag'){
       const u = R.udls[draggingItem.index];
       const unit = u.mode==='area' ? 'kN/m\u00b2' : 'kN/m';
-      if (draggingItem.sub==='both') label = 'mag = '+fmt(u.magStart,1)+' '+unit;
-      else if (draggingItem.sub==='start') label = 'mag @ start = '+fmt(u.magStart,1)+' '+unit;
-      else label = 'mag @ end = '+fmt(u.magEnd,1)+' '+unit;
+      if (draggingItem.sub==='start') label = 'mag @ start = '+fmt(u.magStart,2)+' '+unit;
+      else label = 'mag @ end = '+fmt(u.magEnd,2)+' '+unit;
       dx = X(draggingItem.sub==='end' ? u.end : u.start);
     } else if (draggingItem.type==='udl'){
       const u = R.udls[draggingItem.index];
@@ -2002,7 +2003,7 @@ function drawSchematic(R, canvasId, printMode, canvasOpts){
 
 function hitTest(px, py){
   // check specific items first (point loads, supports), then udls, then beam fallback
-  const order = ['pointload','support','udl-mag','udl','beam'];
+  const order = ['pointload-mag','pointload','support','udl-mag','udl','beam'];
   for (const t of order){
     for (const r of hitRegions){
       if (r.type!==t) continue;
@@ -2042,15 +2043,15 @@ function onSchematicHoverCursor(e){
   if (!cv) return;
   const pos = canvasMousePos(e);
   const hit = hitTest(pos.x, pos.y);
-  const isHoverable = hit && (hit.type==='support' || hit.type==='pointload' || hit.type==='udl' || hit.type==='udl-mag');
+  const isHoverable = hit && (hit.type==='support' || hit.type==='pointload' || hit.type==='pointload-mag' || hit.type==='udl' || hit.type==='udl-mag');
   const newHover = isHoverable ? {type: hit.type, index: hit.index, sub: hit.sub} : null;
   if (!sameHoverTarget(newHover, hoveredItem)){
     hoveredItem = newHover;
     if (lastResults) drawSchematic(lastResults, 'cvSchematic', false); // redraw only when the target actually changes
   }
   if (!hit){ cv.style.cursor = 'pointer'; return; }
+  if (hit.type==='pointload-mag' || hit.type==='udl-mag'){ cv.style.cursor = 'ns-resize'; return; }
   if (hit.type==='support' || hit.type==='pointload'){ cv.style.cursor = 'grab'; return; }
-  if (hit.type==='udl-mag'){ cv.style.cursor = 'ns-resize'; return; }
   if (hit.type==='udl'){
     const mode = udlModeAtX(udls[hit.index], pos.x);
     cv.style.cursor = (mode==='move') ? 'grab' : 'ew-resize';
@@ -2080,8 +2081,15 @@ function onSchematicMouseDown(e){
   if (e.button !== 0) return; // left button (or primary touch) only
   const pos = canvasMousePos(e);
   const hit = hitTest(pos.x, pos.y);
-  if (!hit || (hit.type!=='support' && hit.type!=='pointload' && hit.type!=='udl' && hit.type!=='udl-mag')) return;
-  if (hit.type==='udl-mag'){
+  if (!hit || (hit.type!=='support' && hit.type!=='pointload' && hit.type!=='pointload-mag' && hit.type!=='udl' && hit.type!=='udl-mag')) return;
+  if (hit.type==='pointload-mag'){
+    const p = pointLoads[hit.index];
+    dragCandidate = {
+      type:'pointload-mag', index: hit.index,
+      startY: e.clientY, origMag: p.mag,
+      pxPerUnit: schematicGeom.arrowSpace / Math.max(1e-6, schematicGeom.maxPointLoadMag)
+    };
+  } else if (hit.type==='udl-mag'){
     const u = udls[hit.index];
     dragCandidate = {
       type:'udl-mag', index: hit.index, sub: hit.sub,
@@ -2112,22 +2120,23 @@ function onSchematicDragMove(e){
     draggingItem = dragCandidate;
     closeAllPopups(); // dragging supersedes any open popup/menu
     const cv = document.getElementById('cvSchematic');
-    if (cv) cv.style.cursor = draggingItem.type==='udl-mag' ? 'ns-resize'
+    if (cv) cv.style.cursor = (draggingItem.type==='udl-mag' || draggingItem.type==='pointload-mag') ? 'ns-resize'
       : (draggingItem.type==='udl' && draggingItem.mode!=='move') ? 'ew-resize' : 'grabbing';
   }
   if (!schematicGeom || !lastResults) return;
 
-  if (draggingItem.type==='udl-mag'){
+  if (draggingItem.type==='pointload-mag'){
+    const p = pointLoads[draggingItem.index];
+    const deltaY = draggingItem.startY - e.clientY; // dragging up = larger magnitude
+    p.mag = Math.round((draggingItem.origMag + deltaY/draggingItem.pxPerUnit)*100)/100;
+  } else if (draggingItem.type==='udl-mag'){
     const u = udls[draggingItem.index];
     const deltaY = draggingItem.startY - e.clientY; // dragging up = larger magnitude
     const deltaMag = deltaY / draggingItem.pxPerUnit;
     if (draggingItem.sub==='start'){
-      u.magStart = Math.round((draggingItem.origMagStart + deltaMag)*10)/10;
+      u.magStart = Math.round((draggingItem.origMagStart + deltaMag)*100)/100;
     } else if (draggingItem.sub==='end'){
-      u.magEnd = Math.round((draggingItem.origMagEnd + deltaMag)*10)/10;
-    } else { // 'both' — uniform load, keep both ends equal while dragging
-      const nv = Math.round((draggingItem.origMagStart + deltaMag)*10)/10;
-      u.magStart = nv; u.magEnd = nv;
+      u.magEnd = Math.round((draggingItem.origMagEnd + deltaMag)*100)/100;
     }
   } else if (draggingItem.type==='udl'){
     const u = udls[draggingItem.index];
