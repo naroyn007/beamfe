@@ -281,41 +281,97 @@ Promote the tested `development` branch to production/`main` when ready. Do not 
 
 ---
 
-## Next Development Task — PDF Company Branding (Logo + Company Info)
+## PDF Company Branding — COMPLETE
 
-**Status: Planned, not yet implemented.** This is scoped to `index.html`'s PDF report generation (`buildPrintReportSingle` / `buildPrintReport`), separate from the SSO work above. Treat this section as the roadmap for that task.
+**Status: Implemented in `development`.** This replaces the earlier "planned" roadmap entry of the same name — everything below is built and live, not proposed.
 
-### Requirements
+### What's built
 
-- **Company logo** — user-selectable, positioned at the top-right of the PDF header.
-- **Company details** — positioned to the left of the logo:
-  - Company Name
-  - Company Address
-  - Optional Company Description / additional information
-- Logo must handle different aspect ratios without distorting.
-- If no logo is selected, the report should still look clean.
-- **Page number** centered in the bottom footer.
-- **Date** moved to the bottom-left footer.
-- Keep the existing report title and analysis identification.
-- Apply the company identity consistently across all report pages and multiple analyses.
+- **Company Branding panel** in Model Input, between Project Details and Beam Items: Company Name, Company Address (**3-line textarea**, not a single-line input — prints with line breaks preserved via `white-space:pre-line` on `.pr-brand-address`), Company Description (optional), and a logo picker with live preview + Remove button. Collapsible via a "Minimize"/"Expand" toggle (`#coBrandingToggle` / `#coBrandingBody`); collapsed state remembered in `localStorage` (`beamfe_co_branding_minimized`) as a pure display preference, not synced to Supabase.
+- **PDF Accent Color picker** was moved into this same panel (previously lived near the Run Analysis button) and is now persisted alongside branding, not just a local, unsaved `<input type="color">`.
+- **Backend: Supabase-persisted, per-user.** No new tables — reuses the existing `user_settings` table (`user_id` PK, `settings` jsonb, RLS already scoped to `auth.uid() = user_id`). Branding lives under a **namespaced key**, `settings.companyBranding = {name, address, description, logoUrl, accentColor}`, so it can't clobber other tools' flat keys already living in the same jsonb blob (e.g. Cuplok's tool settings use unnamespaced top-level keys in the same table). Every write does **read → merge → write**, never a blind overwrite of the whole `settings` object.
+- **Logo storage**: existing `company-assets` Storage bucket (public read), new path convention `user-logos/<uid>/logo.<ext>` (separate from the pre-existing `logos/<org-id>.png` convention used by the unrelated organizations/Yard Ops system). Upload → `sb.storage.from('company-assets').upload(...)` → public URL saved to `logoUrl` → fetched once per session and converted to a data URI (`hydrateLogoDataUrl()`) for the live preview and for PDF embedding, same reasoning as the existing chart-canvas-to-dataURL conversion (avoids live-fetch/CORS issues at print time).
+- **Load/save lifecycle**: `loadCompanyProfileFromSupabase()` fires once a user is confirmed authenticated+licensed (hooked into `checkLicenseAndRoute`'s success path), not at cold page load. `doSignOut()` clears `companyProfile` back to blank and re-renders the form, so branding doesn't leak to the next person signing in on a shared device.
+- **Save status feedback**: `#coSaveStatus` shows "Saving…" / "Saved ✓" / "Save failed: …" / "Not saved — please sign in first." — added because the original auto-save-on-blur behavior gave no visual confirmation either way.
 
-Backend: company logo stored in **Supabase Storage**, with the company information/logo reference stored separately so it can be loaded when generating the BEAM//FE PDF. Not yet implemented.
+### PDF header/footer layout (multiple iterations, final state below)
 
-### Current relevant code (as of this session)
+- **Single row, not two**: company details + logo are inline with `.pr-titleblock` (same row as "Beam analysis report" + analysis name), not a separate row above it.
+- **Order**: company details first (right-aligned text), logo to its right, flush against the page's right margin (`.pr-brand-inline{margin-left:auto}` on the whole group).
+- **Logo sizing**: natural aspect ratio — single `max-height` constraint (not a paired max-width+max-height "box" that would letterbox non-matching aspect ratios). `object-fit:contain` kept only as a safety net for the rare case both dimensions get constrained.
+  - ⚠️ Real bug hit and fixed here: an earlier version used `max-height:100%` on the `<img>` relying on `align-items:stretch` on the flex row to give it a definite parent height — this caused the whole row to not reach the true right edge (~80% across instead of flush). Root cause: percentage-height on a replaced element inside a stretched flex item is unreliable across rendering engines. Fixed by switching to a **fixed** `max-height` (not a percentage) plus `width:max-content;height:max-content;align-self:center` on the container. If logo sizing bugs resurface, check for percentage-height-of-stretched-flex-parent patterns first.
+- **Date moved from footer into the header**, directly under the analysis name: `Beam analysis report / Analysis Name / Date: 19 Sep 2026`. New `.pr-sub-date` CSS rule.
+- **Title block top-aligned, not center-aligned**, with the company-info block (`align-items:flex-start` on `.pr-titleblock` and `.pr-brand-inline`, was `center`). Center-alignment made the title look "too low" once company info + the added Date line changed the relative block heights.
+- **Footer**: disclaimer text now shows **only on page 2**, not page 1 (`pageFooterHtml(sheetLabel, showDisclaimer)` takes a boolean; page 1 passes `false`, page 2 passes `true`). Page number is the only thing left in `.pr-footer-meta`, centered via `text-align:center` (no longer needs the old 3-column grid trick since Date isn't sharing the row anymore).
+  - ⚠️ Real bug found and fixed here: **page 1 never had a footer at all**. The original single-footer markup sat once at the very end of the combined page1+page2 template, and the page-splitting JS (`internalPageBreak.nextSibling` relocation) moved everything after the break — including that one footer — wholesale onto page 2. Fixed by wrapping each page's content in its own `.pr-body` div and giving each page (`pageFooterHtml(page1Label, false)` and `pageFooterHtml(page2Label, true)`) its own footer as a sibling of that page's `.pr-body`, not shared.
+- **Page number pinned to the true bottom of the physical page**, not floating after whatever content precedes it. Technique: `.pr-page{height:100vh; display:flex; flex-direction:column}` inside `@media print` (100vh maps to one physical page's content box in a paginated print context), with `.pr-body{flex:1 1 auto}` so it fills available space and pushes the footer down. This applies independently to both the original `.pr-page` div and the JS-created `.pr-page2` div (same class, same rule).
+- **Section 5/6 header spacing**: when Code Check (5) and Diagrams (6) both land on page 2, their section-title headers were crowding (`.pr-page.pr-page2 .pr-section-title{margin-top:6px}`). Bumped to `18px` — a real fix, not vestigial.
 
-- `pageHeaderHtml(sheetLabel)` (inside `buildPrintReportSingle`) builds `.pr-titleblock` (title + analysis name, left) and `.pr-meta` (Sheet X of Y + Date, currently top-right). This is called once per printed sheet/page, for every analysis, so it's already the correct place to add the company info + logo block — it will apply consistently across all pages and analyses with no extra plumbing.
-- `.pr-footer` currently only renders the static boilerplate disclaimer text, centered. No page number or date currently live in the footer.
-- `page1Label` / `page2Label` (built in `buildPrintReport(allResults)`) already compute the true document-wide page number as `"(i*2+1) of totalPages"` / `"(i*2+2) of totalPages"` across all analyses in the consolidated PDF — this is exactly the value to move into the centered footer. No new page-counting logic needed.
-- `dateDisplay` is computed once per report build from the single project-level date field (`projectDetails.date`), so it's already consistent across every page — safe to move as-is into the footer.
-- Chart images are already baked into the PDF via `canvas.toDataURL('image/png')` before `window.print()` (see the `scratch.querySelectorAll('canvas')` loop in `buildPrintReport`), specifically to avoid print-rendering issues. The logo should follow the same pattern — fetch once from Supabase Storage, convert to a data URI, and inject that, rather than pointing an `<img>` at a live Storage URL at print time.
+### Known-unresolved item — do not assume fixed
 
-### Implementation notes / open decisions
+The `company-assets` Storage bucket's write/update RLS policies are **bucket-wide with no path restriction** (`bucket_id = 'company-assets'`, no owner/folder check) — this predates this session's work and was **found, not created**, while building the per-user logo upload. Practically: any authenticated user across the whole product suite can currently overwrite or delete any file in that bucket, including the real ROI Engineering org logo. Adding a narrower policy scoped to `user-logos/<uid>/` does **not** fix this — Postgres RLS policies are OR'd together, so a stricter policy alongside the existing loose one grants nothing extra; the loose one still wins. Properly closing this requires *replacing* the two existing loose policies, which was deliberately **not done** without first checking what the Yard Ops org-logo upload flow depends on. Flag this before anyone treats the bucket as locked down.
 
-1. **Logo scaling** — fixed-height container (~40–50px tall, max-width ~160px) with `object-fit:contain`. Do not stretch to fill a fixed box; must not distort regardless of source aspect ratio (wide wordmark vs. square icon vs. tall logo).
-2. **Header layout** — `.pr-meta` (currently holding Sheet X + Date, top-right) empties out once both move to the footer; that's where the logo slot goes. Likely two stacked rows: new top row = [Company info left | Logo right], existing title block row unchanged below it.
-3. **Footer needs 3 zones, not 1** — currently `.pr-footer` is a single centered disclaimer block. Needs: disclaimer text (its own row, as now) + a second row with Date (left) and Page N of Y (center).
-4. **No-logo fallback** — when no logo is set, the company-info text column should expand or the row should collapse cleanly, not leave a dead empty box on the right.
-5. **Scope decision needed before backend work starts**: is this a single fixed "ROI Engineering" branding, or per-customer (each BEAM//FE licensee uploads their own company's logo/info)? "User-selectable" + a Supabase-backed reference strongly implies **per-customer**, keyed by user/license — this should be confirmed explicitly, since it determines whether the company profile row is global or keyed to `auth.uid()` / license, and where it's edited (a settings/account section, not a global config).
-6. Supabase Storage bucket policy needs deciding — recommend private bucket with authenticated/signed access fetched client-side (mirroring the existing canvas→dataURL pattern above), not a fully public bucket, since this is per-customer branding tied to a paid license.
+---
 
-Do not start backend/Storage work until the scope decision in point 5 is confirmed.
+## PDF Report Header — Final Pixel Adjustments (2026-09-19)
+
+**Status: Applied in `development`.** These are the current verified pixel/layout values in `index.html` and should be preserved unless the report header is intentionally redesigned.
+
+- **Title block vertical position:** `.pr-titleblock > div:first-child` has **`padding-top: 10px`**. This moves the report title / analysis name / date block down within the header without changing the company branding block.
+- **Title-to-divider spacing:** `.pr-titleblock` uses **`padding-bottom: 6px`** before the 2px accent divider. This reduced the previous gap and keeps the logo/header visually closer to the divider.
+- **Company details ↔ logo alignment:** `.pr-brand-inline` uses **`align-items: center`**, so the logo is vertically centered against the full company-details block.
+- **Logo sizing:** the runtime logo sizing rule uses the rendered company-details height plus **28px**, capped at **58px**:
+
+  `Math.min(info.getBoundingClientRect().height + 28, 58)`
+
+  The logo keeps its natural aspect ratio; do not reintroduce percentage-based `max-height` sizing or a paired fixed width/height box, as those caused earlier alignment/rendering issues.
+- **Current header structure:** report title/date on the left; company details followed by logo on the right, all on one header row.
+
+**Verified directly from `development/index.html` on 2026-09-19.** `main` was not modified.
+
+---
+
+## Model Summary Section Removed / Loadings Table Restructured
+
+**Status: Complete in `development`.**
+
+- **Old PDF Section 2 ("Model Summary") removed entirely** — its four columns (Span length, Supports, Loads combined-case count, Tributary width) were mostly redundant: span length is already labeled on the schematic's own dimension line, Supports duplicates the more complete Section 5 (now 4) Reactions table, and the Loads count column was a vague summary of what Section 4 (now 3) Loadings already lists in full detail per-row.
+- **Sections renumbered 1–6** with no gaps: 1 Beam schematic, 2 Section properties, 3 Loadings, 4 Reactions, 5 Code check summary, 6 Shear/moment/deflection diagrams.
+- **Distributed Load table columns changed**: dropped **Type** (Area/Line), added **Trib. Width (m)** as the last column instead — showing the actual global tributary width for Area-mode rows, or `1.00` for Line-mode rows (dimensionally correct: a Line load in kN/m is the same as an Area load in kN/m² with tributary width exactly 1.0). This makes tributary width visible per-row directly in the table that needs it, replacing what the deleted Model Summary section used to show as one global value.
+- **Profile column kept** (Uniform/Triangular/Trapezoidal) — reviewed and judged genuinely useful (at-a-glance shape classification) even though it's derivable from the two magnitude columns, unlike the deleted Model Summary columns which duplicated *more detailed* data shown elsewhere.
+- Dead code cleaned up: `supSummary`/`loadSummary` JS variables and the `.pr-model-summary` CSS block, which only existed to feed the removed section.
+- **PDF Loadings tables now hide entirely when empty** instead of showing a "None" placeholder row — Point Load table only renders if `R.pointLoads.length`, Distributed Load table only if `R.udls.length`. If a model somehow has neither, a single "No loads defined for this analysis." note shows instead of two empty-looking tables.
+
+---
+
+## Concrete Pour Pressure Calculator — NEW
+
+**Status: Complete in `development`.** New quick-add tool on the schematic toolbar, "+ Concrete Pressure" button right after "+ Distributed Load" (`openConcretePressureCalc()`).
+
+### What it does
+
+Builds a formwork concrete-pressure UDL (or pair of UDLs) from four inputs: **Unit Wt (kN/m³, default 25)**, **Pour Height (m)**, **Pmax (kN/m²)**, **Start (m)**.
+
+- **Pmax is a direct user input, deliberately not computed by the tool.** The full ACI 347 rate-of-placement/temperature formula (which is what actually determines a real Pmax) was researched mid-session but the SI/metric version came back with conflicting coefficients across sources (a 7.2 vs 2.7 discrepancy on what should be the same constant) — rather than guess at a safety-critical formula, the decision was to require Pmax as an input the user has already calculated by their own trusted method, and have the tool handle only the resulting load-shape geometry.
+- **Load shape**: flat plateau at Pmax starting from `Start`, tapering linearly down to 0 over the final `h1 = Pmax / Unit Wt` metres, ending at `End = Start + Pour Height`. (Direction was inverted once during development — originally 0-at-Start ramping up, now Pmax-at-Start ramping down, per explicit correction.) Built as **two Area-mode UDLs** (plateau + ramp) when a plateau exists, or **one triangular UDL** when Pmax exactly equals the full uncapped hydrostatic value (`Unit Wt × Pour Height`) — no plateau in that case, handled by the same formula degenerating cleanly (`k = End − h1` collapses to `Start`).
+- **Validation**: Pmax cannot exceed the full hydrostatic pressure (`Unit Wt × Pour Height`) — rejected as physically invalid, not silently clamped, since pressure is never greater than that per the source material found.
+- **Beam-length handling**: if the pour zone would extend past the beam's end, the load is **clipped and tapered at the beam's end** (not blocked) — the magnitude at the clip point is the correctly interpolated value from the original ramp, not just chopped flat. Only genuinely blocks Add when `Start` itself is at or past the beam's end (nothing at all would fit). Three clip cases handled in `computeLoadRows()`: clip lands in the ramp (plateau stays full, ramp shortens + tapers), clip lands in the plateau (ramp doesn't fit at all, single flat row), or no clipping needed.
+- **Follows the app's existing Line/Area UDL toggle** (`mode: udlModeGlobal`), not hardcoded to Area — matches how every other UDL-creation path in the app already behaves. The popup shows a "Created as: Line (kN/m) / Area (kN/m² × trib.)" note (same pattern as the manual UDL editor) so it's clear which mode is active. Note: since Unit Wt × Pour Height is physically an area-based pressure, creating one of these in Line mode applies that number directly as kN/m with **no** tributary-width multiplication — that's on the user to account for, the tool doesn't second-guess the toggle.
+
+---
+
+## Model Input Panel Reorganized
+
+**Status: Complete in `development`.**
+
+- **"Run Analysis" button removed entirely**, along with its listener and the now-unused `.run-btn` CSS. It was redundant — the app already auto-runs analysis on essentially every input change (beam length, supports, loads, section properties, etc. all have their own `change`-triggered `runAnalysis()` calls).
+- **Generate Report (PDF), Save Model, Load Model** moved to the very top of the Model Input panel, above Project Details, in a single 3-column row (`.row3`, already existed in CSS). Previously these lived at the bottom of the panel, with Save/Load as a pair and Report as its own full-width button above them.
+
+---
+
+## Still Open
+
+- **Company Branding backend scope decision** (see the original roadmap's point 5) has been effectively answered by implementation: it's **per-user** (`user_settings`, keyed to `auth.uid()`), not global/fixed. Confirmed and built, not still pending.
+- **`company-assets` bucket RLS gap** — see "Known-unresolved item" above. Not fixed.
+- **BEAM//FE SSO bootstrap** (top of this document) — still not implemented, unrelated to any of this session's work.
+- Multi-analysis milestone and Disclaimer Acceptance Gate remain ready for production promotion as previously noted; nothing in this session's work has been promoted to `main`.

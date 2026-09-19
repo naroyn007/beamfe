@@ -88,12 +88,13 @@
   .stack{display:flex;flex-direction:column;gap:14px;}
 
   label{font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--blue-line-dim);display:block;margin-bottom:4px;}
-  input[type=number], input[type=text], input[type=password], input[type=date], select{
+  input[type=number], input[type=text], input[type=password], input[type=date], select, textarea{
     width:100%;background:var(--navy-deep);border:1px solid var(--blue-line-dim);
     color:var(--paper);padding:7px 8px;font-family:var(--mono);font-size:13px;border-radius:2px;
   }
+  textarea{resize:vertical;line-height:1.4;}
   input:disabled, select:disabled{opacity:0.4;cursor:not-allowed;}
-  input:focus, select:focus{outline:1px solid var(--cyan);border-color:var(--cyan);}
+  input:focus, select:focus, textarea:focus{outline:1px solid var(--cyan);border-color:var(--cyan);}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
   .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
   .row-auto{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;}
@@ -153,14 +154,6 @@
     cursor:pointer;border-radius:2px;text-transform:none;white-space:nowrap;
   }
   .import-btn:hover{border-color:var(--cyan);color:var(--cyan);background:rgba(111,214,232,0.08);}
-
-  .run-btn{
-    width:100%;padding:13px;background:var(--cyan);color:var(--navy-deep);border:none;
-    font-family:var(--head);font-weight:700;letter-spacing:2px;text-transform:uppercase;font-size:15px;
-    cursor:pointer;border-radius:2px;
-  }
-  .run-btn:hover{background:#8CE2F0;}
-  .run-btn:active{transform:translateY(1px);}
 
   .report-btn{
     width:100%;padding:11px;background:none;color:var(--blue-line);
@@ -339,13 +332,39 @@
   .print-report{display:none;}
   .pr-page{background:#ffffff;color:#111827;font-family:'IBM Plex Mono','SFMono-Regular',Consolas,monospace;
     width:100%;max-width:800px;margin:0 auto;padding:36px 40px;}
+  /* align-items:flex-start (not center) — with center, a short/simple company-info block
+     pulled the taller title+analysis+date block down to match its own visual center,
+     which read as the title sitting too low. Top-aligning both blocks fixes that. */
   .pr-titleblock{display:flex;justify-content:space-between;align-items:flex-start;
-    border-bottom:2px solid var(--pr-accent, #7f1d1d);padding-bottom:12px;margin-bottom:16px;}
+    border-bottom:2px solid var(--pr-accent, #7f1d1d);padding-bottom:6px;margin-bottom:16px;gap:16px;}
   .pr-titleblock h1{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:22px;font-weight:700;
     letter-spacing:1px;margin:0;color:#111827;text-transform:uppercase;}
   .pr-titleblock .pr-sub{font-size:11px;color:#4b5563;margin-top:3px;}
+  .pr-titleblock .pr-sub-date{font-size:11px;color:#4b5563;margin-top:2px;}
+  .pr-titleblock .pr-sub-date b{color:#111827;}
+  .pr-titleblock > div:first-child{
+  padding-top:10px;
+}
   .pr-titleblock .pr-meta{text-align:right;font-size:11px;color:#4b5563;line-height:1.7;}
   .pr-titleblock .pr-meta b{color:#111827;}
+  /* Company branding: company details + logo, inline on the same row as the report
+     title (not a separate row) — details first, logo to its right. Only rendered
+     at all when at least one branding field is set (see pageHeaderHtml JS). */
+.pr-brand-inline{display:flex;align-items:center;gap:14px;flex:0 0 auto;margin-left:auto;}
+  .pr-brand-info{font-size:10.5px;color:#6b7280;line-height:1.45;text-align:right;}
+  .pr-brand-name{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:13.5px;font-weight:700;
+    letter-spacing:0.3px;color:#111827;text-transform:uppercase;}
+  .pr-brand-address{color:#6b7280;white-space:pre-line;}
+  .pr-brand-desc{color:#6b7280;font-style:italic;}
+  /* The logo follows the rendered height of the company-details block. Its width remains
+     automatic, so the uploaded logo keeps its original aspect ratio instead of looking
+     compressed or stretched. A max-width is retained only as an overflow safety net. */
+  .pr-brand-logo{flex:0 0 auto;display:flex;align-items:flex-start;}
+  .pr-brand-logo img{display:block;width:auto;height:auto;max-width:260px;object-fit:contain;}
+  /* Footer: just the disclaimer (page 2 only, see pageFooterHtml) and a centered page
+     number — Date now lives in the header instead. */
+  .pr-footer-meta{margin-top:6px;text-align:center;}
+  .pr-footer-meta b{color:#374151;}
   .pr-analysis-id{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:11.5px;
     letter-spacing:0.8px;text-transform:uppercase;color:#4b5563;margin:0 0 8px;
     border-left:3px solid var(--pr-accent, #7f1d1d);padding-left:7px;}
@@ -361,13 +380,6 @@
   }
   .pr-section-title:first-of-type{margin-top:0;}
   .pr-table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:4px;}
-  /* Model Summary headers stay on one line even when the model has many supports/loads. */
-  .pr-model-summary{table-layout:fixed;}
-  .pr-model-summary thead th{white-space:nowrap;font-size:9px;}
-  .pr-model-summary thead th:nth-child(1){width:18%;}
-  .pr-model-summary thead th:nth-child(2){width:27%;}
-  .pr-model-summary thead th:nth-child(3){width:37%;}
-  .pr-model-summary thead th:nth-child(4){width:18%;}
   /* Excel-style table headers: the whole header cell is filled, not just the text area. */
   /* Excel-style table headers: darker maroon fill with inverted white text. */
   .pr-table thead th{
@@ -412,7 +424,7 @@
   .pr-page.pr-page2 .pr-titleblock{margin-bottom:9px;padding-bottom:8px;}
   .pr-page.pr-page2 .pr-infogrid{margin-bottom:8px;font-size:10px;}
   .pr-page.pr-page2 .pr-infogrid td{padding-top:3px;padding-bottom:3px;}
-  .pr-page.pr-page2 .pr-section-title{margin-top:6px;margin-bottom:4px;padding:0;background:none !important;color:#111827;}
+  .pr-page.pr-page2 .pr-section-title{margin-top:18px;margin-bottom:4px;padding:0;background:none !important;color:#111827;}
   .pr-page.pr-page2 .pr-footer{margin-top:10px;padding-top:6px;font-size:8.5px;line-height:1.35;}
   .pr-page.pr-page2 .pr-diagrams{gap:6px;margin-bottom:2px;}
   .pr-page.pr-page2 .pr-diagram-cap{font-size:8.5px;}
@@ -435,7 +447,13 @@
     body{background:#fff;padding:0;}
     .wrap, #floatPopup, #ctxMenu, #tableOverlayRoot, #licenseGate{display:none !important;}
     .print-report{display:block !important;}
-    .pr-page{padding:0;max-width:none;}
+    /* height:100vh maps to one physical page's content box in a paginated print
+       context; flex-column + .pr-body{flex:1} then pushes .pr-footer down to the true
+       bottom edge of that page, rather than it floating right after whatever content
+       happens to precede it. Each split .pr-page/.pr-page2 div already corresponds to
+       exactly one physical sheet, so this applies per-page, not just once overall. */
+    .pr-page{padding:0;max-width:none;height:100vh;display:flex;flex-direction:column;}
+    .pr-body{flex:1 1 auto;}
     .pr-page-break{page-break-before:always;break-before:page;}
     .pr-table, .pr-diagrams>div, .pr-titleblock, .pr-infogrid{page-break-inside:avoid;break-inside:avoid;}
     .pr-watermark{
@@ -495,6 +513,9 @@
   .license-msg.err{color:var(--red);}
   .license-msg.ok{color:var(--green);}
   .license-msg.pending{color:var(--blue-line-dim);}
+  #coSaveStatus.err{color:var(--red);}
+  #coSaveStatus.ok{color:var(--green);}
+  #coSaveStatus.pending{color:var(--blue-line-dim);}
   .license-note{font-size:10.5px;color:var(--blue-line-dim);margin-top:16px;line-height:1.6;}
   .license-or{font-size:10px;letter-spacing:0.5px;text-transform:uppercase;color:var(--blue-line-dim);text-align:center;margin:16px 0 10px;}
   .license-unlock-btn-secondary{background:none;border:1px solid var(--cyan);color:var(--cyan);}
@@ -603,6 +624,13 @@
       <div class="panel-head">Model Input</div>
       <div class="panel-body stack">
 
+        <div class="row3">
+          <button class="report-btn" id="reportBtn">Generate Report (PDF) ⬇</button>
+          <button class="report-btn" id="saveBtn">Save Model ⬇</button>
+          <button class="report-btn" id="loadBtn">Load Model ⬆</button>
+        </div>
+        <input type="file" id="loadFileInput" accept=".json,application/json" style="display:none;">
+
         <div class="stack">
           <div class="section-title">Project Details</div>
           <div class="row2">
@@ -624,6 +652,34 @@
               <div><label>Beam / Member ID</label><input type="text" id="prjBeamId" placeholder="e.g. B-1"></div>
             </div>
             <div class="field-note">Project details are shared by all analyses. Each analysis keeps its own beam, section, supports and loads.</div>
+          </div>
+        </div>
+
+        <div class="stack">
+          <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>Company Branding</span>
+            <button type="button" class="import-btn" id="coBrandingToggle">Minimize</button>
+          </div>
+          <div id="coBrandingBody">
+            <div class="field-note" style="margin-top:-4px;">Shown in the header of every generated PDF report.</div>
+            <div><label>Company Name</label><input type="text" id="coName" placeholder="e.g. ROI Engineering"></div>
+            <div><label>Company Address</label><textarea id="coAddress" rows="3" placeholder="e.g. 1 Tuas Ave 1&#10;Singapore 639519"></textarea></div>
+            <div><label>Company Description (optional)</label><input type="text" id="coDescription" placeholder="e.g. Structural Engineering &amp; Formwork Design"></div>
+            <div>
+              <label>Company Logo (optional)</label>
+              <input type="file" id="coLogoInput" accept="image/png,image/jpeg,image/svg+xml,image/webp" style="display:none;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <button type="button" class="import-btn" id="coLogoBtn">Choose Logo ⬆</button>
+                <img id="coLogoPreview" style="display:none;max-height:32px;max-width:120px;object-fit:contain;background:#fff;border-radius:2px;padding:2px;">
+                <button type="button" class="import-btn" id="coLogoRemoveBtn" style="display:none;">Remove Logo</button>
+              </div>
+            </div>
+            <div class="pdf-accent-row">
+              <label for="pdfAccentColor">PDF Accent Color</label>
+              <input type="color" id="pdfAccentColor" value="#7f1d1d" title="PDF export accent color">
+              <span id="pdfAccentValue">#7F1D1D</span>
+            </div>
+            <div class="field-note" id="coSaveStatus" style="min-height:13px;"></div>
           </div>
         </div>
 
@@ -692,19 +748,6 @@
             <input type="number" id="deflLimit" value="270" step="10">
           </div>
         </div>
-
-        <button class="run-btn" id="runBtn">Run Analysis ▸</button>
-        <div class="pdf-accent-row">
-          <label for="pdfAccentColor">PDF Accent Color</label>
-          <input type="color" id="pdfAccentColor" value="#7f1d1d" title="PDF export accent color">
-          <span id="pdfAccentValue">#7F1D1D</span>
-        </div>
-        <button class="report-btn" id="reportBtn">Generate Report (PDF) ⬇</button>
-        <div class="row2" style="margin-top:8px;">
-          <button class="report-btn" id="saveBtn">Save Model ⬇</button>
-          <button class="report-btn" id="loadBtn">Load Model ⬆</button>
-        </div>
-        <input type="file" id="loadFileInput" accept=".json,application/json" style="display:none;">
       </div>
     </div>
 
@@ -1041,6 +1084,7 @@ async function checkLicenseAndRoute(userEmail, options){
   if (result.valid){
     currentLicense = {license_type: result.license_type, expires_at: result.expires_at};
     currentUserEmail = userEmail;
+    loadCompanyProfileFromSupabase(); // fire-and-forget: fills the panel once it resolves, doesn't block routing
     if (!options || options.showDisclaimer !== false){
       showDisclaimerView();
       return true;
@@ -1062,6 +1106,8 @@ async function doSignOut(){
   if (sb) await sb.auth.signOut();
   currentLicense = null;
   currentUserEmail = null;
+  companyProfile = companyProfileBlank();
+  loadCompanyProfileToDom();
   renderLicenseFooter();
   showLoginView();
 }
@@ -1242,6 +1288,162 @@ let udlModeGlobal = 'line';
 let currentAnalysisIndex = 0;
 let projectDetails = {name:'', by:'', checked:'', date:''};
 let analyses = [];
+
+// Company branding (PDF header logo + company info). Persisted per-user in Supabase,
+// independent of any single beam model/project file — this is account-level identity.
+// Backing store: user_settings.settings.companyBranding — a namespaced key inside the
+// same jsonb blob other tools (e.g. Cuplok) already use for their own settings, so every
+// write here reads-merges-writes rather than overwriting the whole settings object.
+// The logo file itself lives in the existing "company-assets" Storage bucket, under
+// user-logos/<uid>/logo.<ext> — public read (matches the bucket's existing convention),
+// write restricted to the owning user via RLS.
+// PDF accent color rides along in the same object/same Supabase row — it's the same
+// per-account report-identity concept as the logo/company text, not project data.
+let companyProfile = {name:'', address:'', description:'', logoUrl:'', logoDataUrl:'', accentColor:'#7f1d1d'};
+
+function companyProfileBlank(){ return {name:'', address:'', description:'', logoUrl:'', logoDataUrl:'', accentColor:'#7f1d1d'}; }
+
+async function loadCompanyProfileFromSupabase(){
+  if (!sb) return;
+  try{
+    const {data:{user}} = await sb.auth.getUser();
+    if (!user) return;
+    const {data, error} = await sb.from('user_settings').select('settings').eq('user_id', user.id).maybeSingle();
+    if (error) throw error;
+    const branding = (data && data.settings && data.settings.companyBranding) || {};
+    companyProfile.name = branding.name || '';
+    companyProfile.address = branding.address || '';
+    companyProfile.description = branding.description || '';
+    companyProfile.logoUrl = branding.logoUrl || '';
+    companyProfile.logoDataUrl = '';
+    companyProfile.accentColor = branding.accentColor || '#7f1d1d';
+    loadCompanyProfileToDom();
+    if (companyProfile.logoUrl) await hydrateLogoDataUrl();
+  }catch(err){
+    console.error('Failed to load company branding', err);
+  }
+}
+
+// The PDF embeds the logo as a data URI (same reasoning as the chart-canvas-to-dataURL
+// conversion elsewhere in this file — avoids any live-fetch/CORS hiccup at print time),
+// so a persisted logoUrl gets converted once per session, on load and after any upload.
+async function hydrateLogoDataUrl(){
+  if (!companyProfile.logoUrl) return;
+  try{
+    const res = await fetch(companyProfile.logoUrl);
+    const blob = await res.blob();
+    const dataUrl = await new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.onload = ()=> resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+    companyProfile.logoDataUrl = dataUrl;
+    updateCompanyLogoPreview();
+  }catch(err){
+    console.error('Failed to load saved logo image', err);
+  }
+}
+
+function setCoSaveStatus(text, cls){
+  const el = document.getElementById('coSaveStatus');
+  if (!el) return;
+  el.textContent = text || '';
+  el.className = 'field-note' + (cls ? ' '+cls : '');
+}
+
+async function saveCompanyProfileFields(){
+  if (!sb) return;
+  setCoSaveStatus('Saving…', 'pending');
+  try{
+    const {data:{user}} = await sb.auth.getUser();
+    if (!user){ setCoSaveStatus('Not saved — please sign in first.', 'err'); return; }
+    const {data: existing} = await sb.from('user_settings').select('settings').eq('user_id', user.id).maybeSingle();
+    const mergedSettings = Object.assign({}, (existing && existing.settings) || {}, {
+      companyBranding: {
+        name: companyProfile.name,
+        address: companyProfile.address,
+        description: companyProfile.description,
+        logoUrl: companyProfile.logoUrl,
+        accentColor: companyProfile.accentColor
+      }
+    });
+    const {error} = await sb.from('user_settings').upsert({user_id:user.id, settings:mergedSettings, updated_at:new Date().toISOString()}, {onConflict:'user_id'});
+    if (error) throw error;
+    setCoSaveStatus('Saved ✓', 'ok');
+  }catch(err){
+    console.error('Failed to save company branding', err);
+    setCoSaveStatus('Save failed: ' + (err.message || 'unknown error'), 'err');
+  }
+}
+
+function syncCompanyProfileFromDom(){
+  companyProfile.name = (document.getElementById('coName')?.value || '').trim();
+  companyProfile.address = (document.getElementById('coAddress')?.value || '').trim();
+  companyProfile.description = (document.getElementById('coDescription')?.value || '').trim();
+  saveCompanyProfileFields();
+}
+function loadCompanyProfileToDom(){
+  setFieldVal('coName', companyProfile.name);
+  setFieldVal('coAddress', companyProfile.address);
+  setFieldVal('coDescription', companyProfile.description);
+  updateCompanyLogoPreview();
+  const accentEl = document.getElementById('pdfAccentColor');
+  if (accentEl && companyProfile.accentColor){
+    accentEl.value = companyProfile.accentColor;
+    if (typeof syncPdfAccentValue === 'function') syncPdfAccentValue();
+  }
+}
+function syncAccentColorFromDom(){
+  const accentEl = document.getElementById('pdfAccentColor');
+  companyProfile.accentColor = (accentEl && accentEl.value) || '#7f1d1d';
+  saveCompanyProfileFields();
+}
+function updateCompanyLogoPreview(){
+  const img = document.getElementById('coLogoPreview');
+  const removeBtn = document.getElementById('coLogoRemoveBtn');
+  if (!img || !removeBtn) return;
+  if (companyProfile.logoDataUrl){
+    img.src = companyProfile.logoDataUrl;
+    img.style.display = '';
+    removeBtn.style.display = '';
+  } else {
+    img.removeAttribute('src');
+    img.style.display = 'none';
+    removeBtn.style.display = 'none';
+  }
+}
+
+async function uploadCompanyLogo(file){
+  if (!sb) return;
+  setCoSaveStatus('Uploading logo…', 'pending');
+  const {data:{user}} = await sb.auth.getUser();
+  if (!user){ setCoSaveStatus('Not saved — please sign in first.', 'err'); return; }
+  const ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g,'') || 'png';
+  const path = 'user-logos/'+user.id+'/logo.'+ext;
+  try{
+    const {error: upErr} = await sb.storage.from('company-assets').upload(path, file, {upsert:true, contentType:file.type, cacheControl:'3600'});
+    if (upErr) throw upErr;
+    const {data:pub} = sb.storage.from('company-assets').getPublicUrl(path);
+    // cache-bust so a re-upload under the same path shows immediately, not a stale cached copy
+    companyProfile.logoUrl = pub.publicUrl + '?t=' + Date.now();
+    await saveCompanyProfileFields(); // sets its own Saved/failed status on completion
+    await hydrateLogoDataUrl();
+  }catch(err){
+    console.error('Logo upload failed', err);
+    setCoSaveStatus('Logo upload failed: ' + (err.message || 'unknown error'), 'err');
+  }
+}
+
+async function removeCompanyLogo(){
+  companyProfile.logoUrl = '';
+  companyProfile.logoDataUrl = '';
+  updateCompanyLogoPreview();
+  await saveCompanyProfileFields();
+  // Clears the reference only — the underlying file, if any, is left in Storage under
+  // the user's own path rather than deleted; harmless, and simpler than adding a
+  // separate delete round-trip for what is a rare action.
+}
 
 function deepClone(value){
   return JSON.parse(JSON.stringify(value));
@@ -1914,6 +2116,7 @@ function renderResults(R, afterDraw){
           <button class="qa-btn" id="qaSupport">+ Support</button>
           <button class="qa-btn" id="qaPointLoad">+ Point Load</button>
           <button class="qa-btn" id="qaUdl">+ Distributed Load</button>
+          <button class="qa-btn" id="qaConcretePressure">+ Concrete Pressure</button>
           <span style="flex:1;"></span>
           <span class="field-note" style="align-self:center;">drag to move &middot; drag UDL edges to resize &middot; double-click to edit &middot; right-click for tables</span>
         </div>
@@ -2042,6 +2245,7 @@ function renderResults(R, afterDraw){
     const idx = addUdlDefault();
     runAnalysis(()=> openEditorFor('udl', idx, true));
   });
+  document.getElementById('qaConcretePressure').addEventListener('click', openConcretePressureCalc);
 }
 
 function statusTag(pass){
@@ -2809,6 +3013,150 @@ function openEditorFor(type, index, isNew, clientX, clientY){
   });
 }
 
+/* ---- Concrete pour pressure calculator ----
+   Pmax (the design formwork pressure — from rate of placement, temperature, chemistry/
+   unit-weight coefficients per ACI 347 or whatever method was used) is a direct user
+   input, not computed here — that calculation depends on values and a formula this tool
+   doesn't own, and guessing at the coefficients would be irresponsible for a safety-
+   critical load. What this DOES compute is the resulting load shape: pressure stays
+   flat at Pmax from Start, then ramps down linearly to 0 over the last h1 = Pmax / Unit
+   Wt of the span, ending at End — the standard capped/trapezoidal profile, oriented
+   with the plateau at Start and the taper at End. That's built as two Area-mode UDLs
+   (uniform plateau, then triangular ramp down), or just one triangular UDL if Pmax
+   happens to equal the full uncapped hydrostatic value (no plateau). Per ACI 347, pressure is never greater than the full hydrostatic head
+   (Unit Wt × Pour Height), so Pmax above that is rejected as physically invalid rather
+   than silently accepted. End = Start + Pour Height, per the explicit convention
+   requested — a deliberate simplification for this workflow, not a general UDL
+   placement rule. */
+function openConcretePressureCalc(){
+  const root = document.getElementById('floatPopup');
+  const x = window.innerWidth/2, y = window.innerHeight/2;
+  const modeLabel = udlModeGlobal==='area' ? 'Area (kN/m\u00b2 \u00d7 trib.)' : 'Line (kN/m)';
+  root.innerHTML = `
+    <div class="float-popup" id="fpBox" style="left:${x}px; top:${y}px;">
+      <div class="fp-head"><span>Concrete Pour Pressure</span><span class="fp-close" id="fpClose">✕</span></div>
+      <div class="fp-body">
+        <div class="row2">
+          <div><label>Unit Wt (kN/m&sup3;)</label><input type="number" step="0.5" id="cc_unitWt" value="25"></div>
+          <div><label>Pour Height (m)</label><input type="number" step="0.1" id="cc_pourH" value="0"></div>
+        </div>
+        <div class="row2">
+          <div><label>Pmax (kN/m&sup2;)</label><input type="number" step="0.5" id="cc_pmax" value="0"></div>
+          <div><label>Start (m)</label><input type="number" step="0.1" id="cc_start" value="0"></div>
+        </div>
+        <div class="field-note">Enter the design pressure you've already calculated (rate of placement, temperature, ACI 347 coefficients, etc.) — not computed here.</div>
+        <div class="field-note">Created as: <b style="color:var(--cyan);">${esc(modeLabel)}</b> — set beam-wide via the toggle above the schematic.</div>
+        <div class="field-note" id="cc_preview"></div>
+        <div class="field-note" id="cc_clipnote"></div>
+        <div class="field-note" id="cc_warning" style="color:var(--red);"></div>
+      </div>
+      <div class="fp-actions">
+        <button class="fp-save" id="ccAdd">Add</button>
+        <button class="fp-delete" id="ccCancel">Cancel</button>
+      </div>
+    </div>`;
+
+  // clamp popup within viewport (same technique as the editor popup above)
+  const box = document.getElementById('fpBox');
+  const bw = 250, bh = box.offsetHeight || 260;
+  let lx = x - bw/2, ly = y - bh/2;
+  if (lx < 8) lx = 8;
+  if (lx + bw > window.innerWidth-8) lx = window.innerWidth-8-bw;
+  if (ly < 8) ly = 8;
+  box.style.left = lx+'px';
+  box.style.top = ly+'px';
+
+  const addBtn = document.getElementById('ccAdd');
+  function readInputs(){
+    const unitWt = parseFloat(document.getElementById('cc_unitWt').value)||0;
+    const pourH = parseFloat(document.getElementById('cc_pourH').value)||0;
+    const pmax = parseFloat(document.getElementById('cc_pmax').value)||0;
+    const start = parseFloat(document.getElementById('cc_start').value)||0;
+    const end = start + pourH;
+    const fullHydro = unitWt * pourH; // uncapped hydrostatic pressure — the physical ceiling for Pmax
+    const h1 = unitWt>0 ? pmax/unitWt : 0; // depth at which the ramp reaches Pmax
+    const isTrapezoid = pmax < fullHydro - 1e-6; // false ⇒ Pmax reaches the full value, pure triangle, no plateau
+    return {unitWt, pourH, pmax, start, end, fullHydro, h1, isTrapezoid};
+  }
+  // Builds the actual load rows to create, clipping at the beam's end and tapering the
+  // magnitude there (via the same linear ramp the untruncated load would follow) instead
+  // of just refusing when the pour zone runs past the beam. Returns null only when even
+  // Start itself is at/past the beam end, i.e. nothing of the load is on the beam at all.
+  function computeLoadRows(v){
+    const Lb = beamLengthValue;
+    const k = v.end - v.h1; // where the plateau ends and the ramp starts (== Start when not trapezoid)
+    if (Lb <= v.start + 1e-9) return null;
+    if (Lb >= v.end){
+      // fits fully, no clipping needed
+      const rows = [];
+      if (v.isTrapezoid) rows.push({start:v.start, end:k, magStart:v.pmax, magEnd:v.pmax});
+      rows.push({start:v.isTrapezoid?k:v.start, end:v.end, magStart:v.pmax, magEnd:0});
+      return rows;
+    }
+    if (Lb >= k){
+      // clip lands inside the ramp: plateau (if any) stays full length, ramp is
+      // shortened and tapers down to the interpolated magnitude at the beam's end
+      // instead of continuing to zero past it.
+      const magAtLb = v.h1>1e-9 ? v.pmax * (v.end - Lb) / v.h1 : v.pmax;
+      const rows = [];
+      if (k > v.start + 1e-9) rows.push({start:v.start, end:k, magStart:v.pmax, magEnd:v.pmax});
+      rows.push({start:k, end:Lb, magStart:v.pmax, magEnd:magAtLb});
+      return rows;
+    }
+    // clip lands inside the plateau itself — the ramp doesn't fit on the beam at all
+    return [{start:v.start, end:Lb, magStart:v.pmax, magEnd:v.pmax}];
+  }
+  function update(){
+    const v = readInputs();
+    const preview = document.getElementById('cc_preview');
+    const clipnote = document.getElementById('cc_clipnote');
+    const warning = document.getElementById('cc_warning');
+    preview.innerHTML = `End = Start + Pour Height = <b>${fmt(v.end,2)} m</b> &middot; Full hydrostatic (uncapped) = <b>${fmt(v.fullHydro,2)} kN/m&sup2;</b>`
+      + (v.isTrapezoid
+        ? ` &middot; flat at Pmax, then ramps Pmax &rarr; 0 over the last <b>${fmt(v.h1,2)} m</b>`
+        : ` &middot; Pmax reaches the full hydrostatic value — pure triangular ramp, no plateau`);
+    clipnote.textContent = '';
+    if (v.pourH<=0){
+      warning.textContent = 'Enter a pour height greater than zero.';
+      addBtn.disabled = true;
+    } else if (v.pmax<=0){
+      warning.textContent = 'Enter a Pmax greater than zero.';
+      addBtn.disabled = true;
+    } else if (v.pmax > v.fullHydro + 1e-6){
+      warning.textContent = `Pmax can't exceed the full hydrostatic pressure (${fmt(v.fullHydro,2)} kN/m\u00b2 = Unit Wt \u00d7 Pour Height) — pressure is never greater than that.`;
+      addBtn.disabled = true;
+    } else if (beamLengthValue <= v.start + 1e-9){
+      warning.textContent = `Start (${fmt(v.start,2)} m) is at or beyond the beam length (${fmt(beamLengthValue,2)} m) — nothing to add.`;
+      addBtn.disabled = true;
+    } else {
+      warning.textContent = '';
+      addBtn.disabled = false;
+      if (v.end > beamLengthValue){
+        clipnote.textContent = `Pour zone extends past the beam length (${fmt(beamLengthValue,2)} m) — the load will be tapered off at the beam's end instead of continuing past it.`;
+      }
+    }
+  }
+  ['cc_unitWt','cc_pourH','cc_pmax','cc_start'].forEach(id=>{
+    document.getElementById(id).addEventListener('input', update);
+  });
+  update();
+
+  document.getElementById('fpClose').addEventListener('click', closeAllPopups);
+  document.getElementById('ccCancel').addEventListener('click', closeAllPopups);
+  addBtn.addEventListener('click', ()=>{
+    if (addBtn.disabled) return;
+    const v = readInputs();
+    const rows = computeLoadRows(v);
+    if (!rows) return;
+    rows.forEach(r=> udls.push({start:r.start, end:r.end, mode:udlModeGlobal, magStart:r.magStart, magEnd:r.magEnd}));
+    closeAllPopups();
+    runAnalysis();
+  });
+  root.querySelectorAll('input').forEach(el=>{
+    el.addEventListener('keydown', ev=>{ if (ev.key==='Enter' && !addBtn.disabled) addBtn.click(); });
+  });
+}
+
 /* ---- Right-click context menu ---- */
 function showContextMenu(clientX, clientY){
   const root = document.getElementById('ctxMenu');
@@ -3127,7 +3475,6 @@ const analysisSelectEl = document.getElementById('analysisSelect');
 const addAnalysisBtnEl = document.getElementById('addAnalysisBtn');
 if (analysisSelectEl) analysisSelectEl.addEventListener('change', e=>switchAnalysis(e.target.value));
 if (addAnalysisBtnEl) addAnalysisBtnEl.addEventListener('click', addNewAnalysis);
-document.getElementById('runBtn').addEventListener('click', runAnalysis);
 window.addEventListener('resize', ()=>{ if(document.getElementById('cvShear')) runAnalysis(); });
 
 /* ======================= PRINT REPORT ======================= */
@@ -3158,6 +3505,7 @@ function syncPdfAccentValue(){
 }
 if (pdfAccentEl){
   pdfAccentEl.addEventListener('input', syncPdfAccentValue);
+  pdfAccentEl.addEventListener('change', syncAccentColorFromDom);
   syncPdfAccentValue();
 }
 
@@ -3199,12 +3547,6 @@ function buildPrintReportSingle(R, meta){
   const propI = String(meta.propI ?? document.getElementById('propI').value ?? '');
   const dateDisplay = dateVal ? new Date(dateVal+'T00:00:00').toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}) : '—';
 
-  const supSummary = R.supports.map((s,i)=>'S'+(i+1)+' '+(s.type==='tie'?'tie-down':'free')+' @ '+fmt(s.pos,2)+'m').join(', ');
-  const loadSummary = [
-    R.pointLoads.length ? R.pointLoads.length+' point load'+(R.pointLoads.length>1?'s':'') : null,
-    R.udls.length ? R.udls.length+' distributed load'+(R.udls.length>1?'s':'') : null
-  ].filter(Boolean).join(' + ') || 'none';
-
   const sectionName = String(meta.sectionName || document.getElementById('sectionName').value.trim() || '—').trim() || '—';
 
   const root = document.getElementById('printReport');
@@ -3213,16 +3555,27 @@ function buildPrintReportSingle(R, meta){
   const page1Label = meta.page1Label || '1 of 2';
   const page2Label = meta.page2Label || '2 of 2';
   function pageHeaderHtml(sheetLabel){
+    const hasBrandInfo = !!(companyProfile.name || companyProfile.address || companyProfile.description);
+    const brandInfoHtml = hasBrandInfo ? `
+      <div class="pr-brand-info">
+        ${companyProfile.name ? `<div class="pr-brand-name">${esc(companyProfile.name)}</div>` : ''}
+        ${companyProfile.address ? `<div class="pr-brand-address">${esc(companyProfile.address)}</div>` : ''}
+        ${companyProfile.description ? `<div class="pr-brand-desc">${esc(companyProfile.description)}</div>` : ''}
+      </div>` : '';
+    const brandLogoHtml = companyProfile.logoDataUrl
+      ? `<div class="pr-brand-logo"><img src="${companyProfile.logoDataUrl}" alt="Company logo"></div>` : '';
+    // Company details first, logo to its right — both inline with the report title,
+    // not a separate row. Skipped entirely when there's no branding set at all.
+    const brandInlineHtml = (hasBrandInfo || companyProfile.logoDataUrl)
+      ? `<div class="pr-brand-inline">${brandInfoHtml}${brandLogoHtml}</div>` : '';
     return `
       <div class="pr-titleblock">
         <div>
           <h1>Beam analysis report</h1>
           <div class="pr-sub"><b>${esc(analysisName)}</b></div>
+          <div class="pr-sub-date">Date <b>${esc(dateDisplay)}</b></div>
         </div>
-        <div class="pr-meta">
-          <div>Sheet <b>${sheetLabel}</b></div>
-          <div>Date <b>${esc(dateDisplay)}</b></div>
-        </div>
+        ${brandInlineHtml}
       </div>
 
       <table class="pr-infogrid">
@@ -3237,6 +3590,20 @@ function buildPrintReportSingle(R, meta){
       </table>`;
   }
 
+  // Page number only (Date moved up into the header, under the analysis name). The
+  // disclaimer now shows only on the sheet where showDisclaimer is true — page 1 no
+  // longer repeats it, page 2 keeps it as the one place it's stated.
+  function pageFooterHtml(sheetLabel, showDisclaimer){
+    return `
+      <div class="pr-footer">
+        ${showDisclaimer ? `<div class="pr-footer-disclaimer">BEAM//FE — client-side finite element solver (Euler–Bernoulli beam elements, direct stiffness method).
+        Preliminary design aid — verify against applicable code and a licensed engineer's stamp before construction use.</div>` : ''}
+        <div class="pr-footer-meta">
+          <span class="pr-footer-page">Page <b>${esc(sheetLabel)}</b></span>
+        </div>
+      </div>`;
+  }
+
   const unstableHtml = (R.unstableSupports && R.unstableSupports.length)
     ? `<div class="pr-unstable">
          <div class="pr-unstable-title">⚠ UNSTABLE — TIE-DOWN REQUIRED</div>
@@ -3249,11 +3616,11 @@ function buildPrintReportSingle(R, meta){
   const printItemCount = R.supports.length + R.pointLoads.length + R.udls.length;
   const densePrint = printItemCount >= 12;
   const ultraDensePrint = printItemCount >= 18;
-  // Keep the report to exactly two pages. When page 1 is too dense, move Section 6
+  // Keep the report to exactly two pages. When page 1 is too dense, move Section 5
   // to page 2 so it stays with the diagrams instead of creating a third page.
   const codeCheckOnPage2 = R.supports.length >= 6 || R.supports.length + R.pointLoads.length + R.udls.length >= 10;
   const codeCheckHtml = `
-      <div class="pr-section-title">6. Code check summary</div>
+      <div class="pr-section-title">5. Code check summary</div>
       <table class="pr-table pr-code-summary">
         <thead><tr><th>Check</th><th>Demand</th><th>Capacity</th><th>Ratio</th><th>Status</th></tr></thead>
         <tbody>${buildCodeCheckRows(R).map(row=>`
@@ -3263,24 +3630,14 @@ function buildPrintReportSingle(R, meta){
   root.innerHTML = `
     <div class="pr-page${densePrint ? ' pr-dense' : ''}${ultraDensePrint ? ' pr-ultra-dense' : ''}" style="--pr-accent:${pdfAccentEl ? pdfAccentEl.value : '#7f1d1d'};--pr-accent-text:${pdfAccentTextColor(pdfAccentEl ? pdfAccentEl.value : '#7f1d1d')};">
       <div class="pr-watermark">${watermarkText ? esc(watermarkText) : ''}</div>
+      <div class="pr-body">
       ${pageHeaderHtml(page1Label)}
       ${unstableHtml}
 
       <div class="pr-section-title">1. Beam schematic</div>
       <canvas id="printSchematic" height="170"></canvas>
 
-      <div class="pr-section-title pr-compact-no-rule">2. Model summary</div>
-      <table class="pr-table pr-model-summary">
-        <thead><tr><th>Span length</th><th>Supports</th><th>Loads (combined case)</th><th>Tributary width</th></tr></thead>
-        <tbody><tr>
-          <td>${fmt(R.L,2)} m</td>
-          <td>${esc(supSummary)}</td>
-          <td>${esc(loadSummary)}</td>
-          <td>${udlModeGlobal==='area' ? fmt(R.trib,2)+' m' : '—'}</td>
-        </tr></tbody>
-      </table>
-
-      <div class="pr-section-title">3. Section properties</div>
+      <div class="pr-section-title">2. Section properties</div>
       <table class="pr-table">
         <thead><tr><th>Section</th><th>E</th><th>I</th><th>Allow. Sag M</th><th>Allow. Hog M</th><th>Allow. Shear</th><th>Defl. limit</th></tr></thead>
         <tbody><tr>
@@ -3294,26 +3651,29 @@ function buildPrintReportSingle(R, meta){
         </tr></tbody>
       </table>
 
-      <div class="pr-section-title pr-compact-no-rule">4. Loadings</div>
-      <table class="pr-table">
+      <div class="pr-section-title pr-compact-no-rule">3. Loadings</div>
+      ${R.pointLoads.length ? `<table class="pr-table">
         <thead><tr><th>Point load</th><th>Position</th><th>Magnitude</th></tr></thead>
-        <tbody>${R.pointLoads.length ? R.pointLoads.map((p,i)=>`
+        <tbody>${R.pointLoads.map((p,i)=>`
           <tr><td>P${i+1}</td><td>${fmt(p.pos,2)} m</td><td>${fmt(p.mag,2)} kN</td></tr>
-        `).join('') : '<tr><td colspan="3" style="color:#9ca3af;">None</td></tr>'}</tbody>
-      </table>
-      <table class="pr-table" style="margin-top:10px;">
-        <thead><tr><th>Distributed load</th><th>Start</th><th>End</th><th>Type</th><th>Mag. @ start</th><th>Mag. @ end</th><th>Profile</th></tr></thead>
-        <tbody>${R.udls.length ? R.udls.map((u,i)=>{
+        `).join('')}</tbody>
+      </table>` : ''}
+      ${R.udls.length ? `<table class="pr-table" style="margin-top:10px;">
+        <thead><tr><th>Distributed load</th><th>Start</th><th>End</th><th>Mag. @ start</th><th>Mag. @ end</th><th>Profile</th><th>Trib. Width (m)</th></tr></thead>
+        <tbody>${R.udls.map((u,i)=>{
           const uniform = u.magStart===u.magEnd;
           const profile = uniform ? 'Uniform' : ((u.magStart===0||u.magEnd===0) ? 'Triangular' : 'Trapezoidal');
           const unit = u.mode==='area' ? 'kN/m\u00b2' : 'kN/m';
+          const tribForRow = u.mode==='area' ? R.trib : 1;
           return `<tr><td>W${i+1}</td><td>${fmt(u.start,2)} m</td><td>${fmt(u.end,2)} m</td>
-            <td>${u.mode==='area'?'Area (\u00d7 trib.)':'Line'}</td>
-            <td>${fmt(u.magStart,2)} ${unit}</td><td>${fmt(u.magEnd,2)} ${unit}</td><td>${profile}</td></tr>`;
-        }).join('') : '<tr><td colspan="7" style="color:#9ca3af;">None</td></tr>'}</tbody>
-      </table>
+            <td>${fmt(u.magStart,2)} ${unit}</td><td>${fmt(u.magEnd,2)} ${unit}</td><td>${profile}</td>
+            <td>${fmt(tribForRow,2)}</td></tr>`;
 
-      <div class="pr-section-title">5. Reactions</div>
+        }).join('')}</tbody>
+      </table>` : ''}
+      ${(!R.pointLoads.length && !R.udls.length) ? '<div class="field-note">No loads defined for this analysis.</div>' : ''}
+
+      <div class="pr-section-title">4. Reactions</div>
       <table class="pr-table">
         <thead><tr><th>Support</th><th>Position</th><th>Type</th><th>Reaction</th><th>Status</th></tr></thead>
         <tbody>${R.reactions.map((r,i)=>{
@@ -3334,20 +3694,31 @@ function buildPrintReportSingle(R, meta){
       </table>
 
       ${codeCheckOnPage2 ? '' : codeCheckHtml}
-      ${codeCheckOnPage2 ? '<div class="pr-page-break"></div>' + pageHeaderHtml(page2Label) + codeCheckHtml : '<div class="pr-page-break"></div>' + pageHeaderHtml(page2Label)}
+      </div>
+      ${pageFooterHtml(page1Label, false)}
+      <div class="pr-page-break"></div>
+      <div class="pr-body">
+      ${codeCheckOnPage2 ? pageHeaderHtml(page2Label) + codeCheckHtml : pageHeaderHtml(page2Label)}
 
-      <div class="pr-section-title">7. Shear, moment and deflection diagrams</div>
+      <div class="pr-section-title">6. Shear, moment and deflection diagrams</div>
       <div class="pr-diagrams">
         <div><canvas id="printShear" height="150"></canvas><div class="pr-diagram-cap">Shear (V) — max ${fmt(R.Vabs,2)} kN at x = ${fmt(R.VabsAtX,2)} m</div></div>
         <div><canvas id="printMoment" height="150"></canvas><div class="pr-diagram-cap">Moment (M) — max ${fmt(R.Mabs,2)} kN·m at x = ${fmt(R.MabsAtX,2)} m</div></div>
         <div><canvas id="printDefl" height="150"></canvas><div class="pr-diagram-cap">Deflection (Δ) — max ${fmt(R.Dabs,2)} mm at x = ${fmt(R.DabsX,2)} m</div></div>
       </div>
-
-      <div class="pr-footer">
-        BEAM//FE — client-side finite element solver (Euler–Bernoulli beam elements, direct stiffness method).
-        Preliminary design aid — verify against applicable code and a licensed engineer's stamp before construction use.
       </div>
+      ${pageFooterHtml(page2Label, true)}
     </div>`;
+
+  // Match the logo to the actual four-line (or otherwise variable) company-details height.
+  // Cap it at the natural report-header scale so a long address cannot make the logo oversized.
+  root.querySelectorAll('.pr-brand-inline').forEach(brand=>{
+    const info = brand.querySelector('.pr-brand-info');
+    const logo = brand.querySelector('.pr-brand-logo img');
+    if (!info || !logo) return;
+const infoHeight = Math.min(info.getBoundingClientRect().height + 28, 58);
+    if (infoHeight > 0) logo.style.height = infoHeight + 'px';
+  });
 
   // Split the two logical sheets into two real print-page containers.
   // Keeping page 1 and page 2 as separate .pr-page elements prevents the browser
@@ -3868,6 +4239,39 @@ document.getElementById('loadFileInput').addEventListener('change', (e)=>{
     showAutosaveBanner(saved);
   }
 })();
+
+// Company branding: the panel's listeners can be wired immediately (they're inert until
+// a user is signed in — each Supabase call below no-ops without a session), but the actual
+// data load happens once a user is confirmed authenticated, in checkLicenseAndRoute().
+document.getElementById('coName').addEventListener('change', syncCompanyProfileFromDom);
+document.getElementById('coAddress').addEventListener('change', syncCompanyProfileFromDom);
+document.getElementById('coDescription').addEventListener('change', syncCompanyProfileFromDom);
+document.getElementById('coLogoBtn').addEventListener('click', ()=> document.getElementById('coLogoInput').click());
+document.getElementById('coLogoInput').addEventListener('change', (e)=>{
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')){ alert('Please choose an image file.'); e.target.value=''; return; }
+  uploadCompanyLogo(file);
+  e.target.value = '';
+});
+document.getElementById('coLogoRemoveBtn').addEventListener('click', removeCompanyLogo);
+
+// Minimize/expand is a display preference only (not company data), so it's fine to keep
+// purely local rather than round-tripping it through Supabase.
+const CO_BRANDING_MINIMIZED_KEY = 'beamfe_co_branding_minimized';
+function setCoBrandingMinimized(minimized){
+  const body = document.getElementById('coBrandingBody');
+  const btn = document.getElementById('coBrandingToggle');
+  if (!body || !btn) return;
+  body.style.display = minimized ? 'none' : '';
+  btn.textContent = minimized ? 'Expand' : 'Minimize';
+  try{ localStorage.setItem(CO_BRANDING_MINIMIZED_KEY, minimized ? '1' : '0'); }catch(err){}
+}
+document.getElementById('coBrandingToggle').addEventListener('click', ()=>{
+  const body = document.getElementById('coBrandingBody');
+  setCoBrandingMinimized(body.style.display !== 'none');
+});
+try{ setCoBrandingMinimized(localStorage.getItem(CO_BRANDING_MINIMIZED_KEY) === '1'); }catch(err){}
 
 // initial run
 runAnalysis();
