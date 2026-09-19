@@ -274,7 +274,7 @@ Before production promotion, the new **per-opening Disclaimer Acceptance Gate** 
 - License upgrade within the same open session does not unnecessarily show the disclaimer again.
 - The previous PDF footer disclaimer remains removed; the PDF remains focused on the calculation report.
 - Development DB security verified: `beamfe_legal_acceptances` is RLS-protected and `authenticated` has INSERT-only table privilege; no `anon` privilege is granted.
-- **Production deployment note:** the `beamfe_legal_acceptances` table/policy currently exists only in the development Supabase project. Replicate this schema/RLS/grant in the production Supabase project before promoting the disclaimer-gate code to production.
+- **Production deployment note:** the `beamfe_legal_acceptances` table/policy has now been replicated to the production Supabase project. A comparison of BEAM//FE-named tables confirmed the existing license/trial tables already match between development and production; the legal-acceptance table was the missing BEAM//FE table.
 
 
 Promote the tested `development` branch to production/`main` when ready. Do not make additional changes to `main` as part of this milestone.
