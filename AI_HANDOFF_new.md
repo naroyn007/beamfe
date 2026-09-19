@@ -262,6 +262,7 @@ Implemented in `development`:
 - Full JavaScript syntax check passes after the fix.
 - **PDF sheet-structure fix:** each analysis is now split into two real `.pr-page` containers (page 1 and page 2), with explicit page breaks between sheets and between analyses. This prevents the browser from treating an entire analysis as one flowing container and creating an unintended third sheet.
 - Follow-up pagination fix: after splitting the sheets into real page containers, the old compact page-2 CSS selectors no longer matched. Restored the compact spacing directly on `.pr-page2` (header, info grid, section spacing, diagrams, captions, and footer) to prevent page-2 overflow.
+- **Restore/autosave project details fix:** Project Name, Designed By, Checked By, and Date now trigger autosave directly when edited, so Restore captures the latest shared project details even when no analysis action was run afterward. Restore also explicitly writes/clears those fields from the saved project record.
 
 **Testing focus:**
 - Create Analysis 1 and Analysis 2 under the same project; change supports/loads independently and switch back and forth.
