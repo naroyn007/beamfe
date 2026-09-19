@@ -347,7 +347,7 @@
   /* Company branding: company details + logo, inline on the same row as the report
      title (not a separate row) — details first, logo to its right. Only rendered
      at all when at least one branding field is set (see pageHeaderHtml JS). */
-  .pr-brand-inline{display:flex;align-items:flex-start;gap:14px;flex:0 0 auto;margin-left:auto;}
+.pr-brand-inline{display:flex;align-items:center;gap:14px;flex:0 0 auto;margin-left:auto;}
   .pr-brand-info{font-size:10.5px;color:#6b7280;line-height:1.45;text-align:right;}
   .pr-brand-name{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:13.5px;font-weight:700;
     letter-spacing:0.3px;color:#111827;text-transform:uppercase;}
@@ -3713,7 +3713,7 @@ function buildPrintReportSingle(R, meta){
     const info = brand.querySelector('.pr-brand-info');
     const logo = brand.querySelector('.pr-brand-logo img');
     if (!info || !logo) return;
-    const infoHeight = Math.min(info.getBoundingClientRect().height + 14, 78);
+const infoHeight = Math.min(info.getBoundingClientRect().height + 28, 92);
     if (infoHeight > 0) logo.style.height = infoHeight + 'px';
   });
 
