@@ -1035,7 +1035,7 @@ async function callVerifyLicense(action, extra){
   return data;
 }
 
-async async function checkLicenseAndRoute(userEmail, options){
+async function checkLicenseAndRoute(userEmail, options){
   const result = await callVerifyLicense('check_license');
   if (result.valid){
     currentLicense = {license_type: result.license_type, expires_at: result.expires_at};
