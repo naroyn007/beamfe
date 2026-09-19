@@ -406,10 +406,15 @@
   .pr-diagrams{display:flex;flex-direction:column;gap:8px;margin-bottom:4px;}
   /* Page 2 is intentionally compact so Sections 6–7 stay on the same sheet. */
   .pr-page .pr-page-break + .pr-titleblock{margin-bottom:9px;padding-bottom:8px;}
+  /* Page 2 is a separately generated print sheet; preserve the compact layout
+     previously applied through the internal page-break selectors. */
   .pr-page.pr-page2 .pr-titleblock{margin-bottom:9px;padding-bottom:8px;}
   .pr-page.pr-page2 .pr-infogrid{margin-bottom:8px;font-size:10px;}
-  .pr-page.pr-page2 .pr-section-title{margin-top:6px;margin-bottom:4px;}
+  .pr-page.pr-page2 .pr-infogrid td{padding-top:3px;padding-bottom:3px;}
+  .pr-page.pr-page2 .pr-section-title{margin-top:6px;margin-bottom:4px;padding:0;background:none !important;color:#111827;}
   .pr-page.pr-page2 .pr-footer{margin-top:10px;padding-top:6px;font-size:8.5px;line-height:1.35;}
+  .pr-page.pr-page2 .pr-diagrams{gap:6px;margin-bottom:2px;}
+  .pr-page.pr-page2 .pr-diagram-cap{font-size:8.5px;}
   .pr-page .pr-page-break + .pr-titleblock + .pr-infogrid{margin-bottom:8px;font-size:10px;}
   .pr-page .pr-page-break + .pr-titleblock + .pr-infogrid + .pr-section-title{margin-top:6px;margin-bottom:4px;}
   .pr-page .pr-page-break + .pr-titleblock ~ .pr-footer{margin-top:10px;padding-top:6px;font-size:8.5px;line-height:1.35;}
