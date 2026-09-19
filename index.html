@@ -138,6 +138,14 @@
     color:var(--blue-line);margin:2px 0 2px 0;border-bottom:1px solid var(--blue-line-dim);padding-bottom:6px;
     display:flex;justify-content:space-between;align-items:center;gap:8px;
   }
+  .analysis-manager{
+    border:1px dashed var(--blue-line-dim);padding:10px;border-radius:2px;
+    background:rgba(255,255,255,0.015);
+  }
+  .analysis-manager-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px;}
+  .analysis-manager-head label{margin:0;}
+  .analysis-manager select{background:var(--navy-deep);}
+
   .import-btn{
     background:none;border:1px solid var(--blue-line-dim);color:var(--blue-line);
     padding:4px 8px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.3px;
@@ -552,13 +560,24 @@
           <div class="section-title">Project Details</div>
           <div class="row2">
             <div><label>Project Name</label><input type="text" id="prjName" placeholder="e.g. 123 Main St Renovation"></div>
-            <div><label>Beam / Member ID</label><input type="text" id="prjBeamId" placeholder="e.g. B-1"></div>
+            <div><label>Date</label><input type="date" id="prjDate"></div>
           </div>
           <div class="row2">
             <div><label>Designed By</label><input type="text" id="prjBy" placeholder="Initials or name"></div>
             <div><label>Checked By</label><input type="text" id="prjChecked" placeholder="Initials or name"></div>
           </div>
-          <div><label>Date</label><input type="date" id="prjDate"></div>
+          <div class="analysis-manager">
+            <div class="analysis-manager-head">
+              <label for="analysisSelect">Analysis</label>
+              <button type="button" class="import-btn" id="addAnalysisBtn">+ New Analysis</button>
+            </div>
+            <select id="analysisSelect"></select>
+            <div class="row2" style="margin-top:8px;">
+              <div><label>Analysis Name</label><input type="text" id="analysisName" placeholder="e.g. Dead + Live Load"></div>
+              <div><label>Beam / Member ID</label><input type="text" id="prjBeamId" placeholder="e.g. B-1"></div>
+            </div>
+            <div class="field-note">Project details are shared by all analyses. Each analysis keeps its own beam, section, supports and loads.</div>
+          </div>
         </div>
 
         <div class="stack">
@@ -1077,6 +1096,153 @@ let tribWidthValue = 1.2;
 // exact mistake that produces a wrong total load without any error showing up).
 let udlModeGlobal = 'line';
 
+/* ======================= PROJECT / MULTI-ANALYSIS STATE ======================= */
+let currentAnalysisIndex = 0;
+let projectDetails = {name:'', by:'', checked:'', date:''};
+let analyses = [];
+
+function deepClone(value){
+  return JSON.parse(JSON.stringify(value));
+}
+
+function defaultAnalysisSnapshot(){
+  return {
+    id:'analysis-1',
+    name:'Analysis 1',
+    beamId:'B-1',
+    beamLength:beamLengthValue,
+    tribWidth:tribWidthValue,
+    udlModeGlobal,
+    sectionName:'',
+    propE:'11000',
+    propI:'51840000',
+    allowFbSag:'5',
+    allowFbHog:'5',
+    allowFv:'20',
+    deflLimit:'270',
+    supports:deepClone(supports),
+    pointLoads:deepClone(pointLoads),
+    udls:deepClone(udls),
+    lastResults:null
+  };
+}
+
+function syncProjectDetailsFromDom(){
+  projectDetails = {
+    name:(document.getElementById('prjName')?.value || '').trim(),
+    by:(document.getElementById('prjBy')?.value || '').trim(),
+    checked:(document.getElementById('prjChecked')?.value || '').trim(),
+    date:document.getElementById('prjDate')?.value || ''
+  };
+}
+
+function loadProjectDetailsToDom(){
+  setFieldVal('prjName', projectDetails.name);
+  setFieldVal('prjBy', projectDetails.by);
+  setFieldVal('prjChecked', projectDetails.checked);
+  setFieldVal('prjDate', projectDetails.date);
+}
+
+function syncCurrentAnalysisToStore(){
+  if (!analyses.length) analyses.push(defaultAnalysisSnapshot());
+  const a = analyses[currentAnalysisIndex] || analyses[0];
+  currentAnalysisIndex = analyses.indexOf(a);
+  if (currentAnalysisIndex < 0) currentAnalysisIndex = 0;
+  const lengthInput = document.getElementById('beamLength');
+  if (lengthInput && lengthInput.value !== '') beamLengthValue = parseFloat(lengthInput.value);
+  const tribInput = document.getElementById('tribWidth');
+  if (tribInput && tribInput.value !== '') tribWidthValue = parseFloat(tribInput.value);
+  a.name = (document.getElementById('analysisName')?.value || a.name || 'Analysis '+(currentAnalysisIndex+1)).trim();
+  a.beamId = (document.getElementById('prjBeamId')?.value || a.beamId || 'B-'+(currentAnalysisIndex+1)).trim();
+  a.beamLength = beamLengthValue;
+  a.tribWidth = tribWidthValue;
+  a.udlModeGlobal = udlModeGlobal;
+  a.sectionName = document.getElementById('sectionName')?.value || '';
+  a.propE = document.getElementById('propE')?.value || '';
+  a.propI = document.getElementById('propI')?.value || '';
+  a.allowFbSag = document.getElementById('allowFbSag')?.value || '';
+  a.allowFbHog = document.getElementById('allowFbHog')?.value || '';
+  a.allowFv = document.getElementById('allowFv')?.value || '';
+  a.deflLimit = document.getElementById('deflLimit')?.value || '';
+  a.supports = deepClone(supports);
+  a.pointLoads = deepClone(pointLoads);
+  a.udls = deepClone(udls);
+  a.lastResults = lastResults ? deepClone(lastResults) : (a.lastResults || null);
+  syncProjectDetailsFromDom();
+}
+
+function loadAnalysisToDom(index){
+  const a = analyses[index];
+  if (!a) return false;
+  currentAnalysisIndex = index;
+  supports = deepClone(a.supports || []);
+  pointLoads = deepClone(a.pointLoads || []);
+  udls = deepClone(a.udls || []);
+  beamLengthValue = parseFloat(a.beamLength) || 6;
+  tribWidthValue = parseFloat(a.tribWidth) || 1.2;
+  udlModeGlobal = a.udlModeGlobal === 'area' ? 'area' : 'line';
+  setFieldVal('beamLength', beamLengthValue);
+  setFieldVal('tribWidth', tribWidthValue);
+  setFieldVal('analysisName', a.name || 'Analysis '+(index+1));
+  setFieldVal('prjBeamId', a.beamId || ('B-'+(index+1)));
+  setFieldVal('sectionName', a.sectionName);
+  setFieldVal('propE', a.propE);
+  setFieldVal('propI', a.propI);
+  setFieldVal('allowFbSag', a.allowFbSag);
+  setFieldVal('allowFbHog', a.allowFbHog);
+  setFieldVal('allowFv', a.allowFv);
+  setFieldVal('deflLimit', a.deflLimit);
+  renderAnalysisPicker();
+  return true;
+}
+
+function renderAnalysisPicker(){
+  const sel = document.getElementById('analysisSelect');
+  if (!sel) return;
+  if (!analyses.length) analyses.push(defaultAnalysisSnapshot());
+  sel.innerHTML = analyses.map((a,i)=>{
+    const name = (a.name || 'Analysis '+(i+1)).trim() || ('Analysis '+(i+1));
+    const id = (a.beamId || '').trim();
+    const label = id ? name+' — '+id : name;
+    return '<option value="'+i+'">'+esc(label)+'</option>';
+  }).join('');
+  sel.value = String(currentAnalysisIndex);
+}
+
+function ensureAnalysisStore(){
+  if (!analyses.length){
+    analyses = [defaultAnalysisSnapshot()];
+    currentAnalysisIndex = 0;
+  }
+  renderAnalysisPicker();
+}
+
+function switchAnalysis(index){
+  const next = parseInt(index,10);
+  if (!isFinite(next) || !analyses[next] || next===currentAnalysisIndex) return;
+  syncCurrentAnalysisToStore();
+  loadAnalysisToDom(next);
+  runAnalysis();
+}
+
+function addNewAnalysis(){
+  syncCurrentAnalysisToStore();
+  const source = analyses[currentAnalysisIndex] || defaultAnalysisSnapshot();
+  const n = analyses.length + 1;
+  const a = deepClone(source);
+  a.id = 'analysis-'+n+'-'+Date.now().toString(36);
+  a.name = 'Analysis '+n;
+  a.beamId = 'B-'+n;
+  a.lastResults = null;
+  analyses.push(a);
+  currentAnalysisIndex = analyses.length-1;
+  loadAnalysisToDom(currentAnalysisIndex);
+  renderAnalysisPicker();
+  runAnalysis();
+}
+
+ensureAnalysisStore();
+
 function getBeamLength(){ return beamLengthValue; }
 
 function addSupportDefault(){
@@ -1517,6 +1683,7 @@ function runAnalysis(afterDraw){
     unstableSupports
   }, afterDraw);
 
+  if (analyses.length) syncCurrentAnalysisToStore();
   if (suppressAutosaveOnce){ suppressAutosaveOnce = false; } else { saveAutosave(); }
 }
 
@@ -2788,6 +2955,14 @@ function darkenForPrint(screenColor){
   return map[screenColor] || screenColor;
 }
 
+const analysisSelectEl = document.getElementById('analysisSelect');
+const addAnalysisBtnEl = document.getElementById('addAnalysisBtn');
+if (analysisSelectEl) analysisSelectEl.addEventListener('change', e=>switchAnalysis(e.target.value));
+if (addAnalysisBtnEl) addAnalysisBtnEl.addEventListener('click', addNewAnalysis);
+['prjName','prjBy','prjChecked','prjDate','analysisName','prjBeamId'].forEach(id=>{
+  const el=document.getElementById(id);
+  if (el) el.addEventListener('input', ()=>{ if(analyses.length) syncCurrentAnalysisToStore(); });
+});
 document.getElementById('runBtn').addEventListener('click', runAnalysis);
 window.addEventListener('resize', ()=>{ if(document.getElementById('cvShear')) runAnalysis(); });
 
@@ -3032,30 +3207,41 @@ const AUTOSAVE_KEY = 'beamfe_autosave_v1';
 let suppressAutosaveOnce = false;
 
 function serializeModel(){
+  syncCurrentAnalysisToStore();
+  syncProjectDetailsFromDom();
+  const active = analyses[currentAnalysisIndex] || analyses[0];
   return {
-    schema: 'beamfe-model',
-    version: 1,
-    savedAt: new Date().toISOString(),
-    beamLength: beamLengthValue,
-    tribWidth: tribWidthValue,
-    udlModeGlobal: udlModeGlobal,
-    sectionName: document.getElementById('sectionName').value,
-    propE: document.getElementById('propE').value,
-    propI: document.getElementById('propI').value,
-    allowFbSag: document.getElementById('allowFbSag').value,
-    allowFbHog: document.getElementById('allowFbHog').value,
-    allowFv: document.getElementById('allowFv').value,
-    deflLimit: document.getElementById('deflLimit').value,
-    project: {
-      name: document.getElementById('prjName').value,
-      beamId: document.getElementById('prjBeamId').value,
-      by: document.getElementById('prjBy').value,
-      checked: document.getElementById('prjChecked').value,
-      date: document.getElementById('prjDate').value
+    schema:'beamfe-model',
+    version:2,
+    savedAt:new Date().toISOString(),
+    project:{
+      name:projectDetails.name,
+      by:projectDetails.by,
+      checked:projectDetails.checked,
+      date:projectDetails.date
     },
-    supports: JSON.parse(JSON.stringify(supports)),
-    pointLoads: JSON.parse(JSON.stringify(pointLoads)),
-    udls: JSON.parse(JSON.stringify(udls))
+    activeAnalysisIndex:currentAnalysisIndex,
+    analyses:analyses.map(a=>({
+      id:a.id,name:a.name,beamId:a.beamId,
+      beamLength:a.beamLength,tribWidth:a.tribWidth,udlModeGlobal:a.udlModeGlobal,
+      sectionName:a.sectionName,propE:a.propE,propI:a.propI,
+      allowFbSag:a.allowFbSag,allowFbHog:a.allowFbHog,allowFv:a.allowFv,deflLimit:a.deflLimit,
+      supports:deepClone(a.supports),pointLoads:deepClone(a.pointLoads),udls:deepClone(a.udls)
+    })),
+    // Legacy active-model fields kept so older readers can still open the saved JSON.
+    beamLength:active?.beamLength ?? beamLengthValue,
+    tribWidth:active?.tribWidth ?? tribWidthValue,
+    udlModeGlobal:active?.udlModeGlobal ?? udlModeGlobal,
+    sectionName:active?.sectionName ?? document.getElementById('sectionName')?.value ?? '',
+    propE:active?.propE ?? document.getElementById('propE')?.value ?? '',
+    propI:active?.propI ?? document.getElementById('propI')?.value ?? '',
+    allowFbSag:active?.allowFbSag ?? document.getElementById('allowFbSag')?.value ?? '',
+    allowFbHog:active?.allowFbHog ?? document.getElementById('allowFbHog')?.value ?? '',
+    allowFv:active?.allowFv ?? document.getElementById('allowFv')?.value ?? '',
+    deflLimit:active?.deflLimit ?? document.getElementById('deflLimit')?.value ?? '',
+    supports:deepClone(active?.supports || supports),
+    pointLoads:deepClone(active?.pointLoads || pointLoads),
+    udls:deepClone(active?.udls || udls)
   };
 }
 
@@ -3065,61 +3251,71 @@ function applyModel(data){
   if (!data || typeof data !== 'object') return false;
   try{
     const setVal = setFieldVal;
-    setVal('beamLength', data.beamLength);
-    setVal('tribWidth', data.tribWidth);
-    setVal('sectionName', data.sectionName);
-    setVal('propE', data.propE);
-    setVal('propI', data.propI);
-    // allowFbSag/allowFbHog is the current format; a model saved before this feature only
-    // has one "allowFb" value — apply it to both, same as the symmetric-section default.
-    if (data.allowFbSag!=null || data.allowFbHog!=null){
-      setVal('allowFbSag', data.allowFbSag);
-      setVal('allowFbHog', data.allowFbHog);
-    } else if (data.allowFb!=null){
-      setVal('allowFbSag', data.allowFb);
-      setVal('allowFbHog', data.allowFb);
-    }
-    setVal('allowFv', data.allowFv);
-    setVal('deflLimit', data.deflLimit);
     if (data.project){
-      setVal('prjName', data.project.name);
-      setVal('prjBeamId', data.project.beamId);
-      setVal('prjBy', data.project.by);
-      setVal('prjChecked', data.project.checked);
-      setVal('prjDate', data.project.date);
+      projectDetails = {
+        name:String(data.project.name||''),
+        by:String(data.project.by||''),
+        checked:String(data.project.checked||''),
+        date:String(data.project.date||'')
+      };
+    } else {
+      projectDetails = {
+        name:String(data.project?.name || ''),
+        by:String(data.project?.by || ''),
+        checked:String(data.project?.checked || ''),
+        date:String(data.project?.date || '')
+      };
     }
-    if (Array.isArray(data.supports) && data.supports.length){
-      supports = data.supports.map(s=>({pos:parseFloat(s.pos)||0, type: s.type==='free'?'free':'tie'}));
+    loadProjectDetailsToDom();
+
+    const normalizeAnalysis = (a,i)=>({
+      id:String(a.id || ('analysis-'+(i+1))),
+      name:String(a.name || ('Analysis '+(i+1))),
+      beamId:String(a.beamId || ('B-'+(i+1))),
+      beamLength:parseFloat(a.beamLength)||6,
+      tribWidth:parseFloat(a.tribWidth)||1.2,
+      udlModeGlobal:a.udlModeGlobal==='area'?'area':'line',
+      sectionName:String(a.sectionName||''),
+      propE:String(a.propE!=null?a.propE:'11000'),
+      propI:String(a.propI!=null?a.propI:'51840000'),
+      allowFbSag:String(a.allowFbSag!=null?a.allowFbSag:(a.allowFb!=null?a.allowFb:'5')),
+      allowFbHog:String(a.allowFbHog!=null?a.allowFbHog:(a.allowFb!=null?a.allowFb:'5')),
+      allowFv:String(a.allowFv!=null?a.allowFv:'20'),
+      deflLimit:String(a.deflLimit!=null?a.deflLimit:'270'),
+      supports:Array.isArray(a.supports)?a.supports.map(s=>({pos:parseFloat(s.pos)||0,type:s.type==='free'?'free':'tie'})):[],
+      pointLoads:Array.isArray(a.pointLoads)?a.pointLoads.map(p=>({pos:parseFloat(p.pos)||0,mag:parseFloat(p.mag)||0})):[],
+      udls:Array.isArray(a.udls)?a.udls.map(u=>({
+        start:parseFloat(u.start)||0,end:parseFloat(u.end)||0,
+        mode:u.mode==='area'?'area':'line',
+        magStart:parseFloat(u.magStart!=null?u.magStart:u.mag)||0,
+        magEnd:parseFloat(u.magEnd!=null?u.magEnd:u.mag)||0
+      })):[],
+      lastResults:null
+    });
+
+    if (Array.isArray(data.analyses) && data.analyses.length){
+      analyses = data.analyses.map(normalizeAnalysis);
+      currentAnalysisIndex = Math.max(0,Math.min(analyses.length-1,parseInt(data.activeAnalysisIndex,10)||0));
+    } else {
+      analyses = [normalizeAnalysis({
+        id:'analysis-1',name:'Analysis 1',beamId:data.beamId || data.project?.beamId || 'B-1',
+        beamLength:data.beamLength,tribWidth:data.tribWidth,udlModeGlobal:data.udlModeGlobal,
+        sectionName:data.sectionName,propE:data.propE,propI:data.propI,
+        allowFbSag:data.allowFbSag,allowFbHog:data.allowFbHog,allowFb:data.allowFb,
+        allowFv:data.allowFv,deflLimit:data.deflLimit,
+        supports:data.supports,pointLoads:data.pointLoads,udls:data.udls
+      },0)];
+      currentAnalysisIndex=0;
     }
-    if (Array.isArray(data.pointLoads)){
-      pointLoads = data.pointLoads.map(p=>({pos:parseFloat(p.pos)||0, mag:parseFloat(p.mag)||0}));
-    }
-    if (Array.isArray(data.udls)){
-      // magStart/magEnd is the current format; fall back to a single old-style "mag" field
-      // so files saved before trapezoidal-load support still load correctly.
-      udls = data.udls.map(u=>({
-        start:parseFloat(u.start)||0, end:parseFloat(u.end)||0,
-        mode: u.mode==='area' ? 'area' : 'line', // normalized below to the universal setting
-        magStart: parseFloat(u.magStart!=null ? u.magStart : u.mag)||0,
-        magEnd: parseFloat(u.magEnd!=null ? u.magEnd : u.mag)||0
-      }));
-    }
-    // Universal UDL input mode: prefer an explicitly saved global setting; otherwise infer
-    // from the first loaded UDL, so files saved before this feature still come in cleanly —
-    // and every UDL always ends up in sync, even if an older file had mixed per-row modes.
-    if (data.udlModeGlobal === 'area' || data.udlModeGlobal === 'line'){
-      udlModeGlobal = data.udlModeGlobal;
-    } else if (udls.length){
-      udlModeGlobal = udls[0].mode;
-    }
-    udls.forEach(u=> u.mode = udlModeGlobal);
+    loadProjectDetailsToDom();
+    loadAnalysisToDom(currentAnalysisIndex);
+    renderAnalysisPicker();
     return true;
   }catch(err){
     console.error('applyModel failed', err);
     return false;
   }
 }
-
 /* ======================= EXCEL IMPORT ======================= */
 // Recognizes common column-header spellings for beam/section properties so a spreadsheet
 // doesn't have to match our field names exactly. Units in parentheses are stripped before
