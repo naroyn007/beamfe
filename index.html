@@ -3052,7 +3052,7 @@ function buildPrintReportSingle(R, meta){
       <div class="pr-titleblock">
         <div>
           <h1>Beam analysis report</h1>
-          <div class="pr-sub">Finite element solution — Euler-Bernoulli beam elements, combined load case</div>
+          <div class="pr-sub">Analysis: <b>${esc(analysisName)}</b> — Finite element solution — Euler-Bernoulli beam elements, combined load case</div>
         </div>
         <div class="pr-meta">
           <div>Sheet <b>${sheetLabel}</b></div>
@@ -3099,7 +3099,6 @@ function buildPrintReportSingle(R, meta){
     <div class="pr-page${densePrint ? ' pr-dense' : ''}${ultraDensePrint ? ' pr-ultra-dense' : ''}" style="--pr-accent:${pdfAccentEl ? pdfAccentEl.value : '#7f1d1d'};--pr-accent-text:${pdfAccentTextColor(pdfAccentEl ? pdfAccentEl.value : '#7f1d1d')};">
       <div class="pr-watermark">${watermarkText ? esc(watermarkText) : ''}</div>
       ${pageHeaderHtml(page1Label)}
-      <div class="pr-analysis-id"><b>${esc(analysisName)}</b>${beamId !== '—' ? ' · '+esc(beamId) : ''}</div>
       ${unstableHtml}
 
       <div class="pr-section-title">1. Beam schematic</div>
