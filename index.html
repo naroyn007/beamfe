@@ -155,14 +155,6 @@
   }
   .import-btn:hover{border-color:var(--cyan);color:var(--cyan);background:rgba(111,214,232,0.08);}
 
-  .run-btn{
-    width:100%;padding:13px;background:var(--cyan);color:var(--navy-deep);border:none;
-    font-family:var(--head);font-weight:700;letter-spacing:2px;text-transform:uppercase;font-size:15px;
-    cursor:pointer;border-radius:2px;
-  }
-  .run-btn:hover{background:#8CE2F0;}
-  .run-btn:active{transform:translateY(1px);}
-
   .report-btn{
     width:100%;padding:11px;background:none;color:var(--blue-line);
     border:1px solid var(--blue-line-dim);
@@ -631,6 +623,13 @@
       <div class="panel-head">Model Input</div>
       <div class="panel-body stack">
 
+        <div class="row3">
+          <button class="report-btn" id="reportBtn">Generate Report (PDF) ⬇</button>
+          <button class="report-btn" id="saveBtn">Save Model ⬇</button>
+          <button class="report-btn" id="loadBtn">Load Model ⬆</button>
+        </div>
+        <input type="file" id="loadFileInput" accept=".json,application/json" style="display:none;">
+
         <div class="stack">
           <div class="section-title">Project Details</div>
           <div class="row2">
@@ -748,14 +747,6 @@
             <input type="number" id="deflLimit" value="270" step="10">
           </div>
         </div>
-
-        <button class="run-btn" id="runBtn">Run Analysis ▸</button>
-        <button class="report-btn" id="reportBtn">Generate Report (PDF) ⬇</button>
-        <div class="row2" style="margin-top:8px;">
-          <button class="report-btn" id="saveBtn">Save Model ⬇</button>
-          <button class="report-btn" id="loadBtn">Load Model ⬆</button>
-        </div>
-        <input type="file" id="loadFileInput" accept=".json,application/json" style="display:none;">
       </div>
     </div>
 
@@ -3026,12 +3017,12 @@ function openEditorFor(type, index, isNew, clientX, clientY){
    unit-weight coefficients per ACI 347 or whatever method was used) is a direct user
    input, not computed here — that calculation depends on values and a formula this tool
    doesn't own, and guessing at the coefficients would be irresponsible for a safety-
-   critical load. What this DOES compute is the resulting load shape: pressure ramps
-   linearly from 0 at Start up to Pmax at depth h1 = Pmax / Unit Wt, then stays flat at
-   Pmax for the rest of the pour height — the standard capped/trapezoidal profile. That's
-   built as two Area-mode UDLs (triangular ramp, then uniform plateau), or just one
-   triangular UDL if Pmax happens to equal the full uncapped hydrostatic value (no
-   plateau). Per ACI 347, pressure is never greater than the full hydrostatic head
+   critical load. What this DOES compute is the resulting load shape: pressure stays
+   flat at Pmax from Start, then ramps down linearly to 0 over the last h1 = Pmax / Unit
+   Wt of the span, ending at End — the standard capped/trapezoidal profile, oriented
+   with the plateau at Start and the taper at End. That's built as two Area-mode UDLs
+   (uniform plateau, then triangular ramp down), or just one triangular UDL if Pmax
+   happens to equal the full uncapped hydrostatic value (no plateau). Per ACI 347, pressure is never greater than the full hydrostatic head
    (Unit Wt × Pour Height), so Pmax above that is rejected as physically invalid rather
    than silently accepted. End = Start + Pour Height, per the explicit convention
    requested — a deliberate simplification for this workflow, not a general UDL
@@ -3053,6 +3044,7 @@ function openConcretePressureCalc(){
         </div>
         <div class="field-note">Enter the design pressure you've already calculated (rate of placement, temperature, ACI 347 coefficients, etc.) — not computed here.</div>
         <div class="field-note" id="cc_preview"></div>
+        <div class="field-note" id="cc_clipnote"></div>
         <div class="field-note" id="cc_warning" style="color:var(--red);"></div>
       </div>
       <div class="fp-actions">
@@ -3083,14 +3075,44 @@ function openConcretePressureCalc(){
     const isTrapezoid = pmax < fullHydro - 1e-6; // false ⇒ Pmax reaches the full value, pure triangle, no plateau
     return {unitWt, pourH, pmax, start, end, fullHydro, h1, isTrapezoid};
   }
+  // Builds the actual load rows to create, clipping at the beam's end and tapering the
+  // magnitude there (via the same linear ramp the untruncated load would follow) instead
+  // of just refusing when the pour zone runs past the beam. Returns null only when even
+  // Start itself is at/past the beam end, i.e. nothing of the load is on the beam at all.
+  function computeLoadRows(v){
+    const Lb = beamLengthValue;
+    const k = v.end - v.h1; // where the plateau ends and the ramp starts (== Start when not trapezoid)
+    if (Lb <= v.start + 1e-9) return null;
+    if (Lb >= v.end){
+      // fits fully, no clipping needed
+      const rows = [];
+      if (v.isTrapezoid) rows.push({start:v.start, end:k, magStart:v.pmax, magEnd:v.pmax});
+      rows.push({start:v.isTrapezoid?k:v.start, end:v.end, magStart:v.pmax, magEnd:0});
+      return rows;
+    }
+    if (Lb >= k){
+      // clip lands inside the ramp: plateau (if any) stays full length, ramp is
+      // shortened and tapers down to the interpolated magnitude at the beam's end
+      // instead of continuing to zero past it.
+      const magAtLb = v.h1>1e-9 ? v.pmax * (v.end - Lb) / v.h1 : v.pmax;
+      const rows = [];
+      if (k > v.start + 1e-9) rows.push({start:v.start, end:k, magStart:v.pmax, magEnd:v.pmax});
+      rows.push({start:k, end:Lb, magStart:v.pmax, magEnd:magAtLb});
+      return rows;
+    }
+    // clip lands inside the plateau itself — the ramp doesn't fit on the beam at all
+    return [{start:v.start, end:Lb, magStart:v.pmax, magEnd:v.pmax}];
+  }
   function update(){
     const v = readInputs();
     const preview = document.getElementById('cc_preview');
+    const clipnote = document.getElementById('cc_clipnote');
     const warning = document.getElementById('cc_warning');
     preview.innerHTML = `End = Start + Pour Height = <b>${fmt(v.end,2)} m</b> &middot; Full hydrostatic (uncapped) = <b>${fmt(v.fullHydro,2)} kN/m&sup2;</b>`
       + (v.isTrapezoid
-        ? ` &middot; ramps 0 &rarr; Pmax over the first <b>${fmt(v.h1,2)} m</b>, then flat at Pmax`
+        ? ` &middot; flat at Pmax, then ramps Pmax &rarr; 0 over the last <b>${fmt(v.h1,2)} m</b>`
         : ` &middot; Pmax reaches the full hydrostatic value — pure triangular ramp, no plateau`);
+    clipnote.textContent = '';
     if (v.pourH<=0){
       warning.textContent = 'Enter a pour height greater than zero.';
       addBtn.disabled = true;
@@ -3100,12 +3122,15 @@ function openConcretePressureCalc(){
     } else if (v.pmax > v.fullHydro + 1e-6){
       warning.textContent = `Pmax can't exceed the full hydrostatic pressure (${fmt(v.fullHydro,2)} kN/m\u00b2 = Unit Wt \u00d7 Pour Height) — pressure is never greater than that.`;
       addBtn.disabled = true;
-    } else if (v.end > beamLengthValue){
-      warning.textContent = `Pour height extends beyond the beam length (${fmt(beamLengthValue,2)} m available, ends at ${fmt(v.end,2)} m).`;
+    } else if (beamLengthValue <= v.start + 1e-9){
+      warning.textContent = `Start (${fmt(v.start,2)} m) is at or beyond the beam length (${fmt(beamLengthValue,2)} m) — nothing to add.`;
       addBtn.disabled = true;
     } else {
       warning.textContent = '';
       addBtn.disabled = false;
+      if (v.end > beamLengthValue){
+        clipnote.textContent = `Pour zone extends past the beam length (${fmt(beamLengthValue,2)} m) — the load will be tapered off at the beam's end instead of continuing past it.`;
+      }
     }
   }
   ['cc_unitWt','cc_pourH','cc_pmax','cc_start'].forEach(id=>{
@@ -3118,12 +3143,9 @@ function openConcretePressureCalc(){
   addBtn.addEventListener('click', ()=>{
     if (addBtn.disabled) return;
     const v = readInputs();
-    if (v.isTrapezoid){
-      udls.push({start:v.start, end:v.start+v.h1, mode:'area', magStart:0, magEnd:v.pmax});
-      udls.push({start:v.start+v.h1, end:v.end, mode:'area', magStart:v.pmax, magEnd:v.pmax});
-    } else {
-      udls.push({start:v.start, end:v.end, mode:'area', magStart:0, magEnd:v.pmax});
-    }
+    const rows = computeLoadRows(v);
+    if (!rows) return;
+    rows.forEach(r=> udls.push({start:r.start, end:r.end, mode:'area', magStart:r.magStart, magEnd:r.magEnd}));
     closeAllPopups();
     runAnalysis();
   });
@@ -3450,7 +3472,6 @@ const analysisSelectEl = document.getElementById('analysisSelect');
 const addAnalysisBtnEl = document.getElementById('addAnalysisBtn');
 if (analysisSelectEl) analysisSelectEl.addEventListener('change', e=>switchAnalysis(e.target.value));
 if (addAnalysisBtnEl) addAnalysisBtnEl.addEventListener('click', addNewAnalysis);
-document.getElementById('runBtn').addEventListener('click', runAnalysis);
 window.addEventListener('resize', ()=>{ if(document.getElementById('cvShear')) runAnalysis(); });
 
 /* ======================= PRINT REPORT ======================= */
