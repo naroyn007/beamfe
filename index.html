@@ -1796,16 +1796,20 @@ function drawSchematic(R, canvasId, printMode, canvasOpts){
   });
 
   // point loads
+  // UDL arrows never draw above y=top (see arrowSpace above), so extending the point load's
+  // own line 15px further up puts its label safely clear of even a max-magnitude UDL, instead
+  // of sharing the same vertical band and reading as text stamped inside the UDL's fill.
+  const PL_TOP = top - 15;
   R.pointLoads.forEach((p,i)=>{
     const hl = isHovered('pointload', i);
     if (hl){ ctx.save(); ctx.shadowColor='rgba(255,201,59,0.85)'; ctx.shadowBlur=10; }
     const x = X(p.pos);
     ctx.strokeStyle = hl ? HOVER_GLOW : T.pointLoad; ctx.fillStyle = hl ? HOVER_GLOW : T.pointLoad; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(x, top+8); ctx.lineTo(x, baseY-2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, PL_TOP); ctx.lineTo(x, baseY-2); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x,baseY-2); ctx.lineTo(x-4,baseY-10); ctx.lineTo(x+4,baseY-10); ctx.closePath(); ctx.fill();
-    ctx.fillText(p.mag+' kN', x-14, top+4);
+    ctx.fillText(p.mag+' kN', x-14, PL_TOP-4);
     if (hl) ctx.restore();
-    if (!printMode) hitRegions.push({type:'pointload', index:i, x1:x-14, y1:top, x2:x+14, y2:baseY-1});
+    if (!printMode) hitRegions.push({type:'pointload', index:i, x1:x-14, y1:PL_TOP-10, x2:x+14, y2:baseY-1});
   });
 
   // supports
