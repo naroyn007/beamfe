@@ -265,4 +265,14 @@ Completed in `development`:
 
 ### Next Horizon — Production Promotion
 
+Before production promotion, the new **per-opening Disclaimer Acceptance Gate** is now implemented in `development`:
+- Authenticated users see the BEAM//FE Important Notice & Disclaimer before entering the app on each page opening.
+- The checkbox is reset unchecked each time the gate is shown; Continue remains disabled until actively checked.
+- Acceptance is recorded only when **Continue** is clicked.
+- Supabase development project contains `public.beamfe_legal_acceptances` with RLS; authenticated users can insert only rows whose `user_id` matches `auth.uid()`.
+- Each acceptance records `product_id`, document type/version, SHA-256 hash of the displayed disclaimer text, server timestamp, user-agent, and path.
+- License upgrade within the same open session does not unnecessarily show the disclaimer again.
+- The previous PDF footer disclaimer remains removed; the PDF remains focused on the calculation report.
+
+
 Promote the tested `development` branch to production/`main` when ready. Do not make additional changes to `main` as part of this milestone.
