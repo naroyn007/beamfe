@@ -18,6 +18,7 @@
     --amber:#F2A93B;
     --green:#5FCB8D;
     --red:#EF6B62;
+    --violet:#C792EA;
     --paper:#EAF2FB;
     --mono:'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
     --head:'Barlow Condensed', 'Arial Narrow', sans-serif;
@@ -87,7 +88,7 @@
   .stack{display:flex;flex-direction:column;gap:14px;}
 
   label{font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--blue-line-dim);display:block;margin-bottom:4px;}
-  input[type=number], input[type=text], select{
+  input[type=number], input[type=text], input[type=password], input[type=date], select{
     width:100%;background:var(--navy-deep);border:1px solid var(--blue-line-dim);
     color:var(--paper);padding:7px 8px;font-family:var(--mono);font-size:13px;border-radius:2px;
   }
@@ -103,6 +104,18 @@
     border:1px solid rgba(242,169,59,0.35);border-radius:2px;
     padding:7px 10px;margin-bottom:8px;
   }
+
+  .unstable-banner{
+    max-width:1320px;margin:0 auto 18px;background:linear-gradient(180deg, var(--navy-panel), var(--navy-mid));
+    border:1px solid var(--red);border-radius:2px;padding:12px 16px;
+  }
+  .unstable-banner .ub-title{
+    font-family:var(--head);font-weight:700;letter-spacing:1.5px;text-transform:uppercase;font-size:13px;
+    color:var(--red);margin-bottom:6px;
+  }
+  .unstable-banner ul{margin:0;padding-left:18px;}
+  .unstable-banner li{font-size:12.5px;color:var(--paper);line-height:1.7;}
+  .unstable-banner li b{color:var(--red);}
 
   .list-item{
     border:1px dashed var(--blue-line-dim);padding:10px;border-radius:2px;position:relative;
@@ -337,6 +350,11 @@
   .pr-diagrams{display:flex;flex-direction:column;gap:14px;margin-bottom:6px;}
   .pr-diagram-cap{font-size:10px;color:#6b7280;text-align:center;margin-top:2px;}
   .pr-footer{border-top:1px solid #d1d5db;padding-top:10px;margin-top:26px;font-size:9.5px;color:#9ca3af;line-height:1.6;}
+  .pr-unstable{border:1.5px solid #991b1b;background:#fef2f2;border-radius:3px;padding:10px 14px;margin-bottom:16px;}
+  .pr-unstable-title{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-weight:700;letter-spacing:1px;
+    font-size:12px;color:#991b1b;text-transform:uppercase;margin-bottom:4px;}
+  .pr-unstable ul{margin:0;padding-left:16px;}
+  .pr-unstable li{font-size:10.5px;color:#111827;line-height:1.6;}
   .pr-sig{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:26px;}
   .pr-sig div{border-top:1px solid #111827;padding-top:4px;font-size:10px;color:#6b7280;}
   .pr-page-break{height:0;}
@@ -376,7 +394,7 @@
   .license-brand{font-family:var(--head);font-weight:700;font-size:30px;letter-spacing:2px;color:var(--paper);}
   .license-brand span{color:var(--cyan);}
   .license-sub{font-size:12px;color:var(--blue-line-dim);letter-spacing:0.5px;margin:6px 0 22px;}
-  .license-box input[type=text], .license-box input[type=email]{
+  .license-box input[type=text], .license-box input[type=email], .license-box input[type=password]{
     width:100%;background:var(--navy-deep);border:1px solid var(--blue-line-dim);
     color:var(--paper);padding:11px 12px;font-family:var(--mono);font-size:14px;border-radius:2px;
     text-align:center;letter-spacing:1px;
@@ -471,6 +489,7 @@
   </header>
 
   <div id="autosaveBanner"></div>
+  <div id="unstableBanner"></div>
 
   <div class="grid">
 
@@ -537,17 +556,21 @@
 
         <div class="stack">
           <div class="section-title">Allowables &amp; Limits</div>
-          <div class="row2">
+          <div class="row3">
             <div>
-              <label>Allow. Bending Moment (kN·m)</label>
-              <input type="number" id="allowFb" value="5" step="0.5">
+              <label>Allow. Sag Moment (kN·m)</label>
+              <input type="number" id="allowFbSag" value="5" step="0.5">
+            </div>
+            <div>
+              <label>Allow. Hog Moment (kN·m)</label>
+              <input type="number" id="allowFbHog" value="5" step="0.5">
             </div>
             <div>
               <label>Allow. Shear Force (kN)</label>
               <input type="number" id="allowFv" value="20" step="1">
             </div>
           </div>
-          <div class="field-note">Rated capacities (e.g. from a product datasheet, already including its own factor of safety) — compared directly against demand moment/shear, not a stress calculation.</div>
+          <div class="field-note">Rated capacities (e.g. from a product datasheet, already including its own factor of safety) — compared directly against demand, not a stress calculation. Sag and Hog default to the same value for symmetric sections; override Hog only if your section's capacity differs in that direction.</div>
           <div>
             <label>Deflection Limit — L /</label>
             <input type="number" id="deflLimit" value="270" step="10">
@@ -1330,7 +1353,8 @@ function runAnalysis(afterDraw){
   const trib = tribWidthValue || 0;
   const E = parseFloat(document.getElementById('propE').value)||0;
   const I = parseFloat(document.getElementById('propI').value)||0;
-  const Fb = parseFloat(document.getElementById('allowFb').value)||0; // allowable bending MOMENT capacity, kN·m
+  const FbSag = parseFloat(document.getElementById('allowFbSag').value)||0; // allowable SAGGING moment capacity, kN·m
+  const FbHog = parseFloat(document.getElementById('allowFbHog').value)||0; // allowable HOGGING moment capacity, kN·m
   const Fv = parseFloat(document.getElementById('allowFv').value)||0; // allowable shear FORCE capacity, kN
   const deflDenom = parseFloat(document.getElementById('deflLimit').value)||300;
 
@@ -1397,29 +1421,53 @@ function runAnalysis(afterDraw){
   const MabsAtX = Math.abs(Mmax)>=Math.abs(Mmin) ? MmaxX : MminX;
   const VabsAtX = Math.abs(Vmax)>=Math.abs(Vmin) ? VmaxX : VminX;
 
-  // fb/fv are now direct DEMAND moment (kN·m) and shear (kN) — compared straight against
-  // the rated capacities Fb/Fv from the product datasheet, not converted through a section
-  // modulus/area stress calculation.
-  const fb = Mabs;
+  // Raw M sign convention (see computeDiagrams): positive = sagging, negative = hogging.
+  // Sag and Hog demand are each checked against their own capacity, never against one
+  // combined |M| — a section can be rated differently in each direction.
+  const Msag = Math.max(0, Mmax);
+  const Mhog = Math.max(0, -Mmin);
+  const MsagAtX = Msag>0 ? MmaxX : null;
+  const MhogAtX = Mhog>0 ? MminX : null;
+
+  // fv is direct DEMAND shear (kN) — compared straight against the rated capacity Fv from
+  // the product datasheet, not converted through a section modulus/area stress calculation.
   const fv = Vabs;
   const deflRatioActual = Dabs>1e-9 ? (L*1000)/Dabs : Infinity;
   const deflAllowIn = (L*1000)/deflDenom; // mm
 
-  const bendingPass = Fb>0 ? fb<=Fb : null;
+  const bendingSagPass = FbSag>0 ? Msag<=FbSag : null;
+  const bendingHogPass = FbHog>0 ? Mhog<=FbHog : null;
+  const bendingPass = (bendingSagPass===null && bendingHogPass===null) ? null
+    : (bendingSagPass!==false && bendingHogPass!==false);
   const shearPass = Fv>0 ? fv<=Fv : null;
   const deflPass = Dabs<=deflAllowIn;
+
+  // A Free support carrying a net uplift reaction is not a resolved solution — Free means
+  // "bearing only, no anchorage," so nothing in the physical model is actually holding that
+  // point down yet. solveWithLiftoff still reports the demand (so the number is useful for
+  // sizing a tie-down), but the configuration itself is unstable until that support is either
+  // switched to Tie-down or the load path is changed so it no longer wants to lift.
+  const unstableSupports = reactions
+    .map((r,i)=>({...r, index:i}))
+    .filter(r => r.type==='free' && !r.liftedOff && r.R < -1e-6);
 
   renderResults({
     L, supports, pointLoads, udls, trib, reactions, diag, deflSamples,
     Vabs, VabsAtX, Mabs, MabsAtX, Dabs, DabsX,
-    fb, Fb, bendingPass, fv, Fv, shearPass,
-    deflAllowIn, deflDenom, deflPass, deflRatioActual, wasAdjusted
+    Msag, MsagAtX, FbSag, bendingSagPass,
+    Mhog, MhogAtX, FbHog, bendingHogPass,
+    bendingPass,
+    fv, Fv, shearPass,
+    deflAllowIn, deflDenom, deflPass, deflRatioActual, wasAdjusted,
+    unstableSupports
   }, afterDraw);
 
   if (suppressAutosaveOnce){ suppressAutosaveOnce = false; } else { saveAutosave(); }
 }
 
 function errPanel(msg){
+  const ub = document.getElementById('unstableBanner');
+  if (ub) ub.innerHTML = '';
   return `<div class="panel"><div class="panel-head">Model Input Error</div><div class="empty-msg" style="color:var(--red);">${msg}</div></div>`;
 }
 
@@ -1430,15 +1478,30 @@ function fmt(n, d=1){
 }
 
 let lastResults = null;
+function renderUnstableBanner(R){
+  const el = document.getElementById('unstableBanner');
+  if (!el) return;
+  if (!R.unstableSupports || !R.unstableSupports.length){ el.innerHTML = ''; return; }
+  const items = R.unstableSupports.map(r =>
+    `<li>Support S${r.index+1} (@ ${fmt(r.pos,2)} m) needs <b>${fmt(Math.abs(r.R),2)} kN</b> of tie-down capacity to resist uplift — it's currently set to <b>Free</b>, which can't hold it down. Change it to <b>Tie-down</b> once anchorage capable of that load is in place.</li>`
+  ).join('');
+  el.innerHTML = `
+    <div class="unstable-banner">
+      <div class="ub-title">⚠ Unstable — tie-down required</div>
+      <ul>${items}</ul>
+    </div>`;
+}
 function renderResults(R, afterDraw){
   lastResults = R;
+  renderUnstableBanner(R);
   const results = document.getElementById('results');
   results.innerHTML = `
     <div class="panel">
       <div class="panel-head">Beam Schematic
         <span class="legend">
           <span><span class="swatch" style="background:var(--cyan);"></span>Beam</span>
-          <span><span class="swatch" style="background:var(--amber);"></span>Point Load / Tie-down</span>
+          <span><span class="swatch" style="background:var(--violet);"></span>Point Load</span>
+          <span><span class="swatch" style="background:var(--amber);"></span>Tie-down</span>
           <span><span class="swatch" style="background:var(--blue-line);"></span>Distributed Load / Free Support</span>
           <span><span class="swatch" style="background:var(--red);"></span>Lifted Off (Uplift)</span>
         </span>
@@ -1511,18 +1574,25 @@ function renderResults(R, afterDraw){
         ${summaryCell('Max Shear','V', fmt(R.Vabs,2),'kN', `at ${fmt(R.VabsAtX,2)} m`, null)}
         ${summaryCell('Max Moment','M', fmt(R.Mabs,2),'kN·m', `at ${fmt(R.MabsAtX,2)} m`, null)}
         ${summaryCell('Max Deflection','Δ', fmt(R.Dabs,2),'mm', `L/${fmt(R.deflRatioActual,0)} actual (limit L/${fmt(R.deflDenom,0)})`, R.deflPass)}
-        ${summaryCell('Bending Moment','M', fmt(R.fb,2),'kN·m', R.Fb ? `vs. Mb = ${fmt(R.Fb,2)} kN·m` : 'no allowable set', R.bendingPass)}
+        ${summaryCell('Bending Moment','M', fmt(R.Mabs,2),'kN·m', `Sag ${fmt(R.Msag,2)}${R.FbSag?'/'+fmt(R.FbSag,2):''} &middot; Hog ${fmt(R.Mhog,2)}${R.FbHog?'/'+fmt(R.FbHog,2):''}`, R.bendingPass)}
       </div>
       <div class="panel-body">
         <table>
           <thead><tr><th>Check</th><th>Demand</th><th>Capacity</th><th>Ratio</th><th>Status</th></tr></thead>
           <tbody>
             <tr>
-              <td>Bending Moment (M)</td>
-              <td>${fmt(R.fb,2)} kN&middot;m</td>
-              <td>${R.Fb? fmt(R.Fb,2)+' kN&middot;m' : '—'}</td>
-              <td>${R.Fb? fmt(R.fb/R.Fb,2) : '—'}</td>
-              <td>${statusTag(R.bendingPass)}</td>
+              <td>Sag Moment (M+)</td>
+              <td>${fmt(R.Msag,2)} kN&middot;m${R.MsagAtX!=null?' at x='+fmt(R.MsagAtX,2)+'m':''}</td>
+              <td>${R.FbSag? fmt(R.FbSag,2)+' kN&middot;m' : '—'}</td>
+              <td>${R.FbSag? fmt(R.Msag/R.FbSag,2) : '—'}</td>
+              <td>${statusTag(R.bendingSagPass)}</td>
+            </tr>
+            <tr>
+              <td>Hog Moment (M&minus;)</td>
+              <td>${fmt(R.Mhog,2)} kN&middot;m${R.MhogAtX!=null?' at x='+fmt(R.MhogAtX,2)+'m':''}</td>
+              <td>${R.FbHog? fmt(R.FbHog,2)+' kN&middot;m' : '—'}</td>
+              <td>${R.FbHog? fmt(R.Mhog/R.FbHog,2) : '—'}</td>
+              <td>${statusTag(R.bendingHogPass)}</td>
             </tr>
             <tr>
               <td>Shear Force (V)</td>
@@ -1546,9 +1616,15 @@ function renderResults(R, afterDraw){
 
   function drawAll(){
     drawSchematic(R);
-    renderInteractiveSeries('cvShear', R.diag.map(d=>({x:d.x,y:d.V})), 'kN', '#6FD6E8');
-    renderInteractiveSeries('cvMoment', R.diag.map(d=>({x:d.x,y:d.M})), 'kN·m', '#F2A93B', true, true);
-    renderInteractiveSeries('cvDefl', R.deflSamples.map(d=>({x:d.x,y:d.defl_mm})), 'mm', '#5FCB8D');
+    const shearLimits = computeSidedLimitLines(R.diag.map(d=>d.V), R.Fv, R.Fv,
+      cap=>'Allow. V = '+fmt(cap,2)+' kN', cap=>'Allow. V = \u2212'+fmt(cap,2)+' kN');
+    const momentLimits = computeSidedLimitLines(R.diag.map(d=>d.M), R.FbSag, R.FbHog,
+      cap=>'Allow. Sag M = '+fmt(cap,2)+' kN\u00b7m', cap=>'Allow. Hog M = '+fmt(cap,2)+' kN\u00b7m');
+    renderInteractiveSeries('cvShear', R.diag.map(d=>({x:d.x,y:d.V})), 'kN', '#6FD6E8', false, false, shearLimits);
+    renderInteractiveSeries('cvMoment', R.diag.map(d=>({x:d.x,y:d.M})), 'kN·m', '#F2A93B', true, true, momentLimits);
+    const deflLimits = computeSidedLimitLines(R.deflSamples.map(d=>d.defl_mm), R.deflAllowIn, R.deflAllowIn,
+      cap=>'Defl. Limit = '+fmt(cap,1)+' mm (L/'+fmt(R.deflDenom,0)+')', cap=>'Defl. Limit = \u2212'+fmt(cap,1)+' mm (L/'+fmt(R.deflDenom,0)+')');
+    renderInteractiveSeries('cvDefl', R.deflSamples.map(d=>({x:d.x,y:d.defl_mm})), 'mm', '#5FCB8D', false, false, deflLimits);
     if (typeof afterDraw === 'function') afterDraw();
   }
   // draw after the browser has laid out the freshly-inserted panels, so canvas widths are correct
@@ -1647,7 +1723,7 @@ function setupCanvas(id, hCss, opts){
 
 /* Redrawn-for-print color palette: dark ink on white, no glow/alpha tricks */
 const PRINT_THEME = {
-  beam:'#1f2937', pointLoad:'#b45309', udlLine:'#1d4ed8', udlText:'#1d4ed8',
+  beam:'#1f2937', pointLoad:'#7c3aed', udlLine:'#1d4ed8', udlText:'#1d4ed8',
   tieFill:'#b45309', tieBolt:'#ffffff', freeStroke:'#1d4ed8', freeDash:'#93c5fd',
   liftedStroke:'#b91c1c', liftedDash:'#fca5a5', dim:'#9ca3af', dimText:'#4b5563',
   hatching:'#9ca3af', labelText:'#111827', grid:'#e5e7eb', zero:'#9ca3af'
@@ -1658,11 +1734,12 @@ let schematicGeom = null;
 let hitRegions = [];
 let dragCandidate = null; // {type, index, startX, startY} — set on mousedown, promoted once past a small movement threshold
 let draggingItem = null;  // {type, index} — only non-null once an actual drag is underway
+let hoveredItem = null;   // {type, index} — the item currently under the cursor, for a visual highlight
 
 function drawSchematic(R, canvasId, printMode, canvasOpts){
   canvasId = canvasId || 'cvSchematic';
   const T = printMode ? PRINT_THEME : {
-    beam:'#6FD6E8', pointLoad:'#F2A93B', udlLine:'rgba(191,220,250,0.8)', udlText:'#BFDCFA',
+    beam:'#6FD6E8', pointLoad:'#C792EA', udlLine:'rgba(191,220,250,0.8)', udlText:'#BFDCFA',
     tieFill:'#F2A93B', tieBolt:'#0A1F3A', freeStroke:'#6FD6E8', freeDash:'rgba(111,214,232,0.5)',
     liftedStroke:'#EF6B62', liftedDash:'rgba(239,107,98,0.5)', dim:'rgba(191,220,250,0.35)',
     dimText:'rgba(191,220,250,0.6)', hatching:'rgba(191,220,250,0.5)', labelText:'#BFDCFA'
@@ -1684,10 +1761,18 @@ function drawSchematic(R, canvasId, printMode, canvasOpts){
   if (!printMode) hitRegions.push({type:'beam', index:-1, x1:X(0), y1:baseY-11, x2:X(L), y2:baseY+11});
 
   // udls (drawn as trapezoids — arrow height varies linearly from magStart to magEnd)
+  const HOVER_GLOW = '#FFC93B'; // brighter than the structural amber used elsewhere, so a
+                                 // hovered item reads as "lit up" rather than blending into
+                                 // an already-amber tie-down support
+  const isHovered = (type, i, sub) => !printMode && !draggingItem && hoveredItem
+    && hoveredItem.type===type && hoveredItem.index===i && hoveredItem.sub===sub;
   const maxUdlMag = Math.max(1e-6, ...R.udls.flatMap(u=>[Math.abs(u.magStart), Math.abs(u.magEnd)]));
   const arrowSpace = (baseY-3) - top;
+  if (!printMode) Object.assign(schematicGeom, {arrowSpace, maxUdlMag});
   R.udls.forEach((u,i)=>{
-    ctx.strokeStyle = T.udlLine;
+    const hl = isHovered('udl', i, undefined) || isHovered('udl-scale', i, undefined);
+    if (hl){ ctx.save(); ctx.shadowColor='rgba(255,201,59,0.85)'; ctx.shadowBlur=10; }
+    ctx.strokeStyle = hl ? HOVER_GLOW : T.udlLine;
     ctx.lineWidth = 1;
     const topYStart = (baseY-3) - (Math.abs(u.magStart)/maxUdlMag) * arrowSpace;
     const topYEnd = (baseY-3) - (Math.abs(u.magEnd)/maxUdlMag) * arrowSpace;
@@ -1702,22 +1787,79 @@ function drawSchematic(R, canvasId, printMode, canvasOpts){
       ctx.beginPath(); ctx.moveTo(x,baseY-3); ctx.lineTo(x-3,baseY-8); ctx.moveTo(x,baseY-3); ctx.lineTo(x+3,baseY-8);
       ctx.stroke();
     }
-    const uniform = u.magStart===u.magEnd;
-    const valueText = uniform ? String(u.magStart) : (u.magStart+'\u2192'+u.magEnd);
-    const label = u.mode==='area' ? (valueText+' kN/m\u00b2 \u00d7 '+R.trib+' m trib') : (valueText+' kN/m');
-    ctx.fillStyle = T.udlText;
-    ctx.fillText(label, X(u.start)+2, Math.min(topYStart,topYEnd)-4);
+    if (hl) ctx.restore();
+    // The top connecting line itself is a third handle — flat for an equal load, sloped for a
+    // trapezoid — that scales BOTH ends together (proportionally, so a trapezoid keeps its
+    // shape and an equal load stays equal) instead of adjusting just one end. Registered as
+    // its exact line coordinates rather than a padded box; hitTest does a proper
+    // distance-to-segment check for this type so a sloped line hit-tests accurately.
+    if (!printMode) hitRegions.push({type:'udl-scale', index:i, x1:X(u.start), y1:topYStart, x2:X(u.end), y2:topYEnd});
+
+    // Magnitude labels double as drag handles: drag vertically on one to change that end's
+    // value directly, reading off the same px-per-unit scale the arrows themselves use
+    // (schematicGeom.arrowSpace/maxUdlMag). Both ends always get their own label — even when
+    // equal — so an equal load can be dragged apart into a trapezoid from either end, and so
+    // it's obvious at a glance what each end is currently carrying.
+    const unitSuffix = u.mode==='area' ? ' kN/m\u00b2\u00d7trib' : ' kN/m';
+    const hlS = isHovered('udl-mag', i, 'start');
+    if (hlS){ ctx.save(); ctx.shadowColor='rgba(255,201,59,0.85)'; ctx.shadowBlur=10; }
+    ctx.fillStyle = hlS ? HOVER_GLOW : T.udlText;
+    const labelS = u.magStart + unitSuffix;
+    const lyS = topYStart - 4;
+    const lxS = X(u.start)+2;
+    ctx.fillText(labelS, lxS, lyS);
+    if (hlS) ctx.restore();
+    if (!printMode){
+      const twS = ctx.measureText(labelS).width;
+      hitRegions.push({type:'udl-mag', index:i, sub:'start', x1:lxS-2, y1:lyS-11, x2:lxS+twS+2, y2:lyS+3});
+    }
+
+    const hlE = isHovered('udl-mag', i, 'end');
+    if (hlE){ ctx.save(); ctx.shadowColor='rgba(255,201,59,0.85)'; ctx.shadowBlur=10; }
+    ctx.fillStyle = hlE ? HOVER_GLOW : T.udlText;
+    const labelE = u.magEnd + unitSuffix;
+    const lyE = topYEnd - 4;
+    const twE = ctx.measureText(labelE).width;
+    const lxE = X(u.end) - 2 - twE; // right-aligned so it stays inside the span near the end edge
+    ctx.fillText(labelE, lxE, lyE);
+    if (hlE) ctx.restore();
+    if (!printMode){
+      hitRegions.push({type:'udl-mag', index:i, sub:'end', x1:lxE-2, y1:lyE-11, x2:lxE+twE+2, y2:lyE+3});
+    }
+
     if (!printMode) hitRegions.push({type:'udl', index:i, x1:X(u.start), y1:Math.min(topYStart,topYEnd)-14, x2:X(u.end), y2:baseY-2});
   });
 
   // point loads
+  // UDL arrows never draw above y=top (see arrowSpace above), so extending the point load's
+  // own line 15px further up puts its label safely clear of even a max-magnitude UDL, instead
+  // of sharing the same vertical band and reading as text stamped inside the UDL's fill.
+  const PL_TOP = top - 15;
+  const maxPointLoadMag = Math.max(1e-6, ...R.pointLoads.map(p=>Math.abs(p.mag)));
+  if (!printMode) Object.assign(schematicGeom, {maxPointLoadMag});
   R.pointLoads.forEach((p,i)=>{
+    const hlBody = isHovered('pointload', i, undefined);
+    if (hlBody){ ctx.save(); ctx.shadowColor='rgba(255,201,59,0.85)'; ctx.shadowBlur=10; }
     const x = X(p.pos);
-    ctx.strokeStyle = T.pointLoad; ctx.fillStyle = T.pointLoad; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(x, top+8); ctx.lineTo(x, baseY-2); ctx.stroke();
+    ctx.strokeStyle = hlBody ? HOVER_GLOW : T.pointLoad; ctx.fillStyle = hlBody ? HOVER_GLOW : T.pointLoad; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x, PL_TOP); ctx.lineTo(x, baseY-2); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x,baseY-2); ctx.lineTo(x-4,baseY-10); ctx.lineTo(x+4,baseY-10); ctx.closePath(); ctx.fill();
-    ctx.fillText(p.mag+' kN', x-14, top+4);
-    if (!printMode) hitRegions.push({type:'pointload', index:i, x1:x-14, y1:top, x2:x+14, y2:baseY-1});
+    if (hlBody) ctx.restore();
+
+    // The value label is its own drag handle (vertical drag changes magnitude), separate from
+    // the line/arrowhead above (horizontal drag on those moves the load's position) — same
+    // split as the UDL magnitude labels vs. the UDL body.
+    const hlMag = isHovered('pointload-mag', i, undefined);
+    if (hlMag){ ctx.save(); ctx.shadowColor='rgba(255,201,59,0.85)'; ctx.shadowBlur=10; }
+    ctx.fillStyle = hlMag ? HOVER_GLOW : T.pointLoad;
+    const plLabel = p.mag+' kN';
+    ctx.fillText(plLabel, x-14, PL_TOP-4);
+    if (hlMag) ctx.restore();
+    if (!printMode){
+      const twP = ctx.measureText(plLabel).width;
+      hitRegions.push({type:'pointload-mag', index:i, x1:x-16, y1:PL_TOP-15, x2:x-14+twP+2, y2:PL_TOP+1});
+      hitRegions.push({type:'pointload', index:i, x1:x-14, y1:PL_TOP, x2:x+14, y2:baseY-1});
+    }
   });
 
   // supports
@@ -1726,61 +1868,93 @@ function drawSchematic(R, canvasId, printMode, canvasOpts){
     const rx = R.reactions ? R.reactions.find(r=>Math.abs(r.pos-s.pos)<1e-6) : null;
     const liftedOff = rx && rx.liftedOff;
     const uplift = rx && !rx.liftedOff && rx.R < -1e-6;
+    const hl = isHovered('support', i);
+    // When hovered, every color this support would normally use is swapped for the glow
+    // amber, while the shape logic (tie/free/uplift/lifted-off) stays exactly the same —
+    // so what you see is the real support, just lit up, not a generic highlight box.
+    const TT = hl ? { ...T, tieFill:HOVER_GLOW, tieBolt:'#3a2a00', freeStroke:HOVER_GLOW,
+      freeDash:'rgba(255,201,59,0.6)', liftedStroke:HOVER_GLOW, liftedDash:'rgba(255,201,59,0.6)',
+      hatching:HOVER_GLOW, labelText:HOVER_GLOW } : T;
+    if (hl){ ctx.save(); ctx.shadowColor='rgba(255,201,59,0.85)'; ctx.shadowBlur=12; }
 
     if (s.type==='tie'){
       // TIE-DOWN: solid filled triangle bearing on a solid hatched (anchored) base
-      ctx.fillStyle = T.tieFill;
+      ctx.fillStyle = TT.tieFill;
       ctx.strokeStyle = ctx.fillStyle;
       ctx.beginPath();
       ctx.moveTo(x, baseY); ctx.lineTo(x-9, baseY+16); ctx.lineTo(x+9, baseY+16); ctx.closePath();
       ctx.fill();
       // anchor bolt marks (signifies uplift capacity)
-      ctx.strokeStyle = T.tieBolt; ctx.lineWidth = 2;
+      ctx.strokeStyle = TT.tieBolt; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(x-4, baseY+6); ctx.lineTo(x-4, baseY+13); ctx.moveTo(x+4, baseY+6); ctx.lineTo(x+4, baseY+13); ctx.stroke();
       // solid ground hatching (anchored to structure below)
-      ctx.strokeStyle = T.hatching; ctx.lineWidth=1;
+      ctx.strokeStyle = TT.hatching; ctx.lineWidth=1;
       ctx.beginPath(); ctx.moveTo(x-13,baseY+16); ctx.lineTo(x+13,baseY+16); ctx.stroke();
       for (let k=-12;k<=12;k+=5){
         ctx.beginPath(); ctx.moveTo(x+k,baseY+16); ctx.lineTo(x+k-4,baseY+22); ctx.stroke();
       }
       if (uplift){
-        ctx.strokeStyle = T.tieFill; ctx.lineWidth = 2;
+        ctx.strokeStyle = TT.tieFill; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(x, baseY+16); ctx.lineTo(x, baseY+6); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(x,baseY+6); ctx.lineTo(x-3,baseY+11); ctx.lineTo(x+3,baseY+11); ctx.closePath(); ctx.fill();
       }
     } else if (liftedOff){
       // FREE support that has physically separated under this load case: gap + dashed outline
-      ctx.strokeStyle = T.liftedStroke; ctx.lineWidth = 1.5; ctx.setLineDash([3,3]);
+      ctx.strokeStyle = TT.liftedStroke; ctx.lineWidth = 1.5; ctx.setLineDash([3,3]);
       ctx.beginPath();
       ctx.moveTo(x, baseY+8); ctx.lineTo(x-9, baseY+24); ctx.lineTo(x+9, baseY+24); ctx.closePath();
       ctx.stroke();
       ctx.setLineDash([]);
-      ctx.strokeStyle = T.liftedDash; ctx.lineWidth=1;
+      ctx.strokeStyle = TT.liftedDash; ctx.lineWidth=1;
       ctx.beginPath(); ctx.moveTo(x-13,baseY+24); ctx.lineTo(x+13,baseY+24); ctx.stroke();
       // gap marks between beam and support = no longer bearing
-      ctx.strokeStyle = T.liftedStroke;
+      ctx.strokeStyle = TT.liftedStroke;
       ctx.beginPath(); ctx.moveTo(x-3,baseY); ctx.lineTo(x-3,baseY+5); ctx.moveTo(x+3,baseY); ctx.lineTo(x+3,baseY+5); ctx.stroke();
+    } else if (uplift){
+      // FREE support carrying net uplift with no anchorage to resist it: red, dashed,
+      // visually broken — distinct from both a normal stable Free support (hollow/cyan)
+      // and a fully lifted-off one (open gap). This is the "needs tie-down now" state.
+      ctx.strokeStyle = TT.liftedStroke; ctx.lineWidth = 1.5; ctx.setLineDash([3,3]);
+      ctx.beginPath();
+      ctx.moveTo(x, baseY); ctx.lineTo(x-9, baseY+15); ctx.lineTo(x+9, baseY+15); ctx.closePath();
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // roller circles, drawn hollow/red instead of filled/cyan, to keep the "Free = bearing
+      // only" shape recognizable while flagging that it's not currently a valid solution
+      ctx.strokeStyle = TT.liftedStroke; ctx.lineWidth = 1;
+      [x-5, x, x+5].forEach(cx=>{
+        ctx.beginPath(); ctx.arc(cx, baseY+18.5, 2.4, 0, Math.PI*2); ctx.stroke();
+      });
+      ctx.strokeStyle = TT.liftedDash; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+      ctx.beginPath(); ctx.moveTo(x-13,baseY+21); ctx.lineTo(x+13,baseY+21); ctx.stroke();
+      ctx.setLineDash([]);
+      // upward-pointing warning arrow above the support, echoing the uplift arrow used on
+      // a tie-down support so the two "carrying uplift" states read the same way
+      ctx.strokeStyle = TT.liftedStroke; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x, baseY+15); ctx.lineTo(x, baseY+3); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x,baseY+3); ctx.lineTo(x-3,baseY+8); ctx.lineTo(x+3,baseY+8); ctx.closePath(); ctx.fill();
     } else {
       // FREE (bearing-only, unanchored): hollow triangle resting on a roller — no ground hatching
-      ctx.strokeStyle = T.freeStroke; ctx.lineWidth = 1.5;
+      ctx.strokeStyle = TT.freeStroke; ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(x, baseY); ctx.lineTo(x-9, baseY+15); ctx.lineTo(x+9, baseY+15); ctx.closePath();
       ctx.stroke();
       // roller circles (free to bear only, not anchored)
-      ctx.fillStyle = T.freeStroke;
+      ctx.fillStyle = TT.freeStroke;
       [x-5, x, x+5].forEach(cx=>{
         ctx.beginPath(); ctx.arc(cx, baseY+18.5, 2.4, 0, Math.PI*2); ctx.fill();
       });
       // dashed baseline (no positive/anchored connection to ground)
-      ctx.strokeStyle = T.freeDash; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+      ctx.strokeStyle = TT.freeDash; ctx.lineWidth=1; ctx.setLineDash([3,3]);
       ctx.beginPath(); ctx.moveTo(x-13,baseY+21); ctx.lineTo(x+13,baseY+21); ctx.stroke();
       ctx.setLineDash([]);
     }
 
-    ctx.fillStyle = liftedOff ? T.liftedStroke : T.labelText;
+    ctx.fillStyle = hl ? TT.labelText : ((liftedOff || uplift) ? T.liftedStroke : T.labelText);
     ctx.font='10px IBM Plex Mono';
-    const labelText = liftedOff ? 'LIFTED @'+fmt(s.pos,1)+'m' : (s.type==='free'?'FREE':'TIE')+' @'+fmt(s.pos,1)+'m';
+    const labelText = liftedOff ? 'LIFTED @'+fmt(s.pos,1)+'m' : uplift ? 'FREE ⚠ @'+fmt(s.pos,1)+'m' : (s.type==='free'?'FREE':'TIE')+' @'+fmt(s.pos,1)+'m';
     ctx.fillText(labelText, x-24, baseY+38);
+    if (hl) ctx.restore();
     if (!printMode) hitRegions.push({type:'support', index:i, x1:x-16, y1:baseY-2, x2:x+16, y2:baseY+42});
   });
 
@@ -1796,7 +1970,24 @@ function drawSchematic(R, canvasId, printMode, canvasOpts){
   if (!printMode && draggingItem){
     let label;
     let dx;
-    if (draggingItem.type==='udl'){
+    if (draggingItem.type==='pointload-mag'){
+      const p = R.pointLoads[draggingItem.index];
+      label = 'mag = '+fmt(p.mag,2)+' kN';
+      dx = X(p.pos);
+    } else if (draggingItem.type==='udl-mag'){
+      const u = R.udls[draggingItem.index];
+      const unit = u.mode==='area' ? 'kN/m\u00b2' : 'kN/m';
+      if (draggingItem.sub==='start') label = 'mag @ start = '+fmt(u.magStart,2)+' '+unit;
+      else label = 'mag @ end = '+fmt(u.magEnd,2)+' '+unit;
+      dx = X(draggingItem.sub==='end' ? u.end : u.start);
+    } else if (draggingItem.type==='udl-scale'){
+      const u = R.udls[draggingItem.index];
+      const unit = u.mode==='area' ? 'kN/m\u00b2' : 'kN/m';
+      label = (u.magStart===u.magEnd)
+        ? 'mag = '+fmt(u.magStart,2)+' '+unit
+        : 'start = '+fmt(u.magStart,2)+' '+unit+'   end = '+fmt(u.magEnd,2)+' '+unit;
+      dx = X((u.start+u.end)/2);
+    } else if (draggingItem.type==='udl'){
       const u = R.udls[draggingItem.index];
       label = 'start = '+fmt(u.start,2)+' m   end = '+fmt(u.end,2)+' m';
       dx = X((u.start+u.end)/2);
@@ -1823,12 +2014,28 @@ function drawSchematic(R, canvasId, printMode, canvasOpts){
   if (!printMode) attachSchematicEvents();
 }
 
+function pointNearSegment(px, py, x1, y1, x2, y2, tol){
+  const dx=x2-x1, dy=y2-y1;
+  const lenSq = dx*dx+dy*dy;
+  let t = lenSq>1e-9 ? ((px-x1)*dx+(py-y1)*dy)/lenSq : 0;
+  t = Math.max(0, Math.min(1, t));
+  const cx = x1+t*dx, cy = y1+t*dy;
+  const ddx = px-cx, ddy = py-cy;
+  return (ddx*ddx+ddy*ddy) <= tol*tol;
+}
+
 function hitTest(px, py){
   // check specific items first (point loads, supports), then udls, then beam fallback
-  const order = ['pointload','support','udl','beam'];
+  const order = ['pointload-mag','pointload','support','udl-mag','udl-scale','udl','beam'];
   for (const t of order){
     for (const r of hitRegions){
       if (r.type!==t) continue;
+      if (t==='udl-scale'){
+        // the top connecting line can be sloped (trapezoid), so a simple bounding-box test
+        // would be inaccurate — this checks actual distance to the line segment itself
+        if (pointNearSegment(px, py, r.x1, r.y1, r.x2, r.y2, 7)) return r;
+        continue;
+      }
       if (px>=r.x1 && px<=r.x2 && py>=r.y1 && py<=r.y2) return r;
     }
   }
@@ -1842,6 +2049,7 @@ function attachSchematicEvents(){
   cv.addEventListener('contextmenu', onSchematicContextMenu);
   cv.addEventListener('mousedown', onSchematicMouseDown);
   cv.addEventListener('mousemove', onSchematicHoverCursor);
+  cv.addEventListener('mouseleave', onSchematicHoverLeave);
 }
 
 const UDL_EDGE_HANDLE_PX = 8; // how close to a UDL's start/end line counts as grabbing that edge
@@ -1854,13 +2062,24 @@ function udlModeAtX(u, px){
   return 'move';
 }
 
+function sameHoverTarget(a, b){
+  return (!a && !b) || (a && b && a.type===b.type && a.index===b.index && a.sub===b.sub);
+}
+
 function onSchematicHoverCursor(e){
   if (draggingItem) return; // the active drag handler owns the cursor while dragging
   const cv = document.getElementById('cvSchematic');
   if (!cv) return;
   const pos = canvasMousePos(e);
   const hit = hitTest(pos.x, pos.y);
+  const isHoverable = hit && (hit.type==='support' || hit.type==='pointload' || hit.type==='pointload-mag' || hit.type==='udl' || hit.type==='udl-mag' || hit.type==='udl-scale');
+  const newHover = isHoverable ? {type: hit.type, index: hit.index, sub: hit.sub} : null;
+  if (!sameHoverTarget(newHover, hoveredItem)){
+    hoveredItem = newHover;
+    if (lastResults) drawSchematic(lastResults, 'cvSchematic', false); // redraw only when the target actually changes
+  }
   if (!hit){ cv.style.cursor = 'pointer'; return; }
+  if (hit.type==='pointload-mag' || hit.type==='udl-mag' || hit.type==='udl-scale'){ cv.style.cursor = 'ns-resize'; return; }
   if (hit.type==='support' || hit.type==='pointload'){ cv.style.cursor = 'grab'; return; }
   if (hit.type==='udl'){
     const mode = udlModeAtX(udls[hit.index], pos.x);
@@ -1868,6 +2087,13 @@ function onSchematicHoverCursor(e){
     return;
   }
   cv.style.cursor = 'pointer';
+}
+
+function onSchematicHoverLeave(){
+  if (hoveredItem){
+    hoveredItem = null;
+    if (lastResults) drawSchematic(lastResults, 'cvSchematic', false);
+  }
 }
 
 function beamXFromClientX(clientX){
@@ -1884,13 +2110,40 @@ function onSchematicMouseDown(e){
   if (e.button !== 0) return; // left button (or primary touch) only
   const pos = canvasMousePos(e);
   const hit = hitTest(pos.x, pos.y);
-  if (!hit || (hit.type!=='support' && hit.type!=='pointload' && hit.type!=='udl')) return;
-  if (hit.type==='udl'){
+  if (!hit || (hit.type!=='support' && hit.type!=='pointload' && hit.type!=='pointload-mag' && hit.type!=='udl' && hit.type!=='udl-mag' && hit.type!=='udl-scale')) return;
+  if (hit.type==='pointload-mag'){
+    const p = pointLoads[hit.index];
+    dragCandidate = {
+      type:'pointload-mag', index: hit.index,
+      startY: e.clientY, origMag: p.mag,
+      pxPerUnit: schematicGeom.arrowSpace / Math.max(1e-6, schematicGeom.maxPointLoadMag)
+    };
+  } else if (hit.type==='udl-mag'){
+    const u = udls[hit.index];
+    dragCandidate = {
+      type:'udl-mag', index: hit.index, sub: hit.sub,
+      startY: e.clientY,
+      origMagStart: u.magStart, origMagEnd: u.magEnd,
+      pxPerUnit: schematicGeom.arrowSpace / Math.max(1e-6, schematicGeom.maxUdlMag)
+    };
+  } else if (hit.type==='udl-scale'){
+    const u = udls[hit.index];
+    // UDL scale handle is isolated from point-load magnitude editing.
+    dragCandidate = {
+      type:'udl-scale', index: hit.index,
+      startY: e.clientY,
+      origMagStart: u.magStart, origMagEnd: u.magEnd,
+      origPointLoadMags: pointLoads.map(p=>p.mag),
+      pxPerUnit: schematicGeom.arrowSpace / Math.max(1e-6, schematicGeom.maxUdlMag)
+    };
+  } else if (hit.type==='udl'){
     const u = udls[hit.index];
     dragCandidate = {
       type:'udl', index: hit.index, mode: udlModeAtX(u, pos.x),
       startX: e.clientX, startY: e.clientY,
-      origStart: u.start, origEnd: u.end, startBeamX: beamXFromClientX(e.clientX)
+      origStart: u.start, origEnd: u.end, startBeamX: beamXFromClientX(e.clientX),
+      origMagStart: u.magStart, origMagEnd: u.magEnd,
+      pxPerUnit: schematicGeom.arrowSpace / Math.max(1e-6, schematicGeom.maxUdlMag)
     };
   } else {
     dragCandidate = {type: hit.type, index: hit.index, startX: e.clientX, startY: e.clientY};
@@ -1908,11 +2161,44 @@ function onSchematicDragMove(e){
     draggingItem = dragCandidate;
     closeAllPopups(); // dragging supersedes any open popup/menu
     const cv = document.getElementById('cvSchematic');
-    if (cv) cv.style.cursor = (draggingItem.type==='udl' && draggingItem.mode!=='move') ? 'ew-resize' : 'grabbing';
+    if (cv) cv.style.cursor = (draggingItem.type==='udl-mag' || draggingItem.type==='pointload-mag' || draggingItem.type==='udl-scale') ? 'ns-resize'
+      : (draggingItem.type==='udl' && draggingItem.mode!=='move') ? 'ew-resize' : 'grabbing';
   }
   if (!schematicGeom || !lastResults) return;
 
-  if (draggingItem.type==='udl'){
+  if (draggingItem.type==='pointload-mag'){
+    const p = pointLoads[draggingItem.index];
+    const deltaY = draggingItem.startY - e.clientY; // dragging up = larger magnitude
+    p.mag = Math.round((draggingItem.origMag + deltaY/draggingItem.pxPerUnit)*100)/100;
+  } else if (draggingItem.type==='udl-mag'){
+    const u = udls[draggingItem.index];
+    const deltaY = draggingItem.startY - e.clientY; // dragging up = larger magnitude
+    const deltaMag = deltaY / draggingItem.pxPerUnit;
+    if (draggingItem.sub==='start'){
+      u.magStart = Math.round((draggingItem.origMagStart + deltaMag)*100)/100;
+    } else if (draggingItem.sub==='end'){
+      u.magEnd = Math.round((draggingItem.origMagEnd + deltaMag)*100)/100;
+    }
+  } else if (draggingItem.type==='udl-scale'){
+    const u = udls[draggingItem.index];
+    const deltaY = draggingItem.startY - e.clientY; // dragging up = larger magnitude
+    const deltaMag = deltaY / draggingItem.pxPerUnit;
+    // Scale both ends by the same factor (not the same absolute amount) so a trapezoid keeps
+    // its shape as it resizes, and an equal load — where both ends already match — simply
+    // stays equal the whole time. The factor is referenced off whichever end currently reads
+    // higher, so the drag's sensitivity matches the individual end-label drags for an equal
+    // load and stays predictable for a trapezoid.
+    const refMag = Math.max(Math.abs(draggingItem.origMagStart), Math.abs(draggingItem.origMagEnd), 1e-6);
+    const scaleFactor = 1 + deltaMag/refMag;
+    u.magStart = Math.round(draggingItem.origMagStart*scaleFactor*100)/100;
+    u.magEnd = Math.round(draggingItem.origMagEnd*scaleFactor*100)/100;
+    // Hard isolation: dragging the UDL scale line must never modify point-load magnitudes.
+    if (Array.isArray(draggingItem.origPointLoadMags)) {
+      pointLoads.forEach((p,i)=>{
+        if (i < draggingItem.origPointLoadMags.length) p.mag = draggingItem.origPointLoadMags[i];
+      });
+    }
+  } else if (draggingItem.type==='udl'){
     const u = udls[draggingItem.index];
     const curBeamX = beamXFromClientX(e.clientX);
     const L = schematicGeom.L;
@@ -1975,6 +2261,15 @@ function onSchematicDblClick(e){
     runAnalysis(()=> openEditorFor('pointload', idx, true, pos.clientX, pos.clientY));
     return;
   }
+  if (hit.type==='udl-scale'){
+    const u = udls[hit.index];
+    const mx = Math.max(u.magStart, u.magEnd);
+    if (u.magStart !== mx || u.magEnd !== mx){
+      u.magStart = mx; u.magEnd = mx;
+      runAnalysis();
+    }
+    return;
+  }
   openEditorFor(hit.type, hit.index, false, pos.clientX, pos.clientY);
 }
 
@@ -1999,6 +2294,20 @@ document.addEventListener('click', (e)=>{
 document.addEventListener('keydown', (e)=>{
   if (e.key==='Escape') closeAllPopups();
 });
+
+// Every number field across the app (beam length, trib width, section properties, allowables,
+// the point-load/support/UDL edit popup, and the right-click summary tables) selects its whole
+// value the moment it gets focus, whether by click or Tab — so typing a new number overwrites
+// it immediately instead of needing a manual backspace/clear first. Capture phase because
+// 'focus' doesn't bubble; the select() itself is deferred a tick because some browsers (Chrome
+// in particular) collapse the selection right after a click-triggered focus, so calling it on
+// the very next frame instead of synchronously in the handler makes it stick either way.
+document.addEventListener('focus', (e)=>{
+  const el = e.target;
+  if (el && el.tagName==='INPUT' && el.type==='number'){
+    setTimeout(()=> el.select(), 0);
+  }
+}, true);
 
 /* ---- Floating edit popup ---- */
 function openEditorFor(type, index, isNew, clientX, clientY){
@@ -2229,14 +2538,17 @@ function renderTableBody(cat){
 
 
 /* ---- Canvas: generic V/M/Defl series ---- */
-function drawSeries(id, points, unit, color, fillFromZero, printMode, canvasOpts, hoverX, invertY){
+function drawSeries(id, points, unit, color, fillFromZero, printMode, canvasOpts, hoverX, invertY, limitLines){
   const {ctx,w,h} = setupCanvas(id, 180, canvasOpts);
   ctx.clearRect(0,0,w,h);
   const padL=60, padR=20, padT=14, padB=22;
   const plotW = w-padL-padR, plotH = h-padT-padB;
   const xs = points.map(p=>p.x), ys = points.map(p=>p.y);
   const xMin=Math.min(...xs), xMax=Math.max(...xs);
-  let yMin=Math.min(...ys,0), yMax=Math.max(...ys,0);
+  // Limit-line values are folded into the y-range too, so a capacity line is never clipped
+  // off-chart even when the actual demand curve sits well inside it.
+  const limitVals = (limitLines||[]).map(l=>l.value);
+  let yMin=Math.min(...ys,...limitVals,0), yMax=Math.max(...ys,...limitVals,0);
   if (yMax-yMin < 1e-6){ yMax+=1; yMin-=1; }
   const yPad = (yMax-yMin)*0.12;
   yMin -= yPad; yMax += yPad;
@@ -2297,6 +2609,31 @@ function drawSeries(id, points, unit, color, fillFromZero, printMode, canvasOpts
   ctx.fillText(xMin.toFixed(1)+' m', padL-2, h-6);
   ctx.fillText(xMax.toFixed(1)+' m', w-padR-30, h-6);
 
+  // capacity limit line(s) — only the side(s) the curve actually reaches get a line (see
+  // computeSidedLimitLines), so a beam that only ever sags doesn't get a clutter line for
+  // a hogging capacity it never approaches
+  if (limitLines && limitLines.length){
+    const limitColor = printMode ? '#b91c1c' : '#EF6B62';
+    ctx.font = '10px IBM Plex Mono';
+    limitLines.forEach(ll=>{
+      const ly = Y(ll.value);
+      ctx.strokeStyle = limitColor; ctx.lineWidth = 1.5; ctx.setLineDash([6,4]);
+      ctx.beginPath(); ctx.moveTo(padL, ly); ctx.lineTo(w-padR, ly); ctx.stroke();
+      ctx.setLineDash([]);
+      if (ll.label){
+        const labelW = ctx.measureText(ll.label).width;
+        let ty = ly - 4;
+        // keep the label inside the plot area instead of clipping off the top/bottom edge
+        if (ty < padT+9) ty = ly + 12;
+        if (ty > padT+plotH-2) ty = ly - 6;
+        ctx.fillStyle = printMode ? 'rgba(255,255,255,0.85)' : 'rgba(10,31,58,0.85)';
+        ctx.fillRect(w-padR-labelW-6, ty-9, labelW+6, 12);
+        ctx.fillStyle = limitColor;
+        ctx.fillText(ll.label, w-padR-labelW-3, ty);
+      }
+    });
+  }
+
   // hover crosshair + exact-value tooltip (screen only, never in the printed report)
   if (!printMode && typeof hoverX === 'number' && isFinite(hoverX) && points.length>1){
     const hx = Math.max(xMin, Math.min(xMax, hoverX));
@@ -2346,8 +2683,8 @@ function drawSeries(id, points, unit, color, fillFromZero, printMode, canvasOpts
 }
 /* Wraps drawSeries with mouse tracking so hovering the chart shows a crosshair + exact
    x/y readout, interpolated along the drawn line rather than snapped to the nearest sample. */
-function renderInteractiveSeries(id, points, unit, color, fillFromZero, invertY){
-  let geom = drawSeries(id, points, unit, color, fillFromZero, false, undefined, null, invertY);
+function renderInteractiveSeries(id, points, unit, color, fillFromZero, invertY, limitLines){
+  let geom = drawSeries(id, points, unit, color, fillFromZero, false, undefined, null, invertY, limitLines);
   const cv = document.getElementById(id);
   if (!cv) return;
   cv.style.cursor = 'crosshair';
@@ -2356,11 +2693,28 @@ function renderInteractiveSeries(id, points, unit, color, fillFromZero, invertY)
     const mx = e.clientX - rect.left;
     if (!geom || !geom.plotW) return;
     const dataX = geom.xMin + (mx-geom.padL)/geom.plotW*(geom.xMax-geom.xMin);
-    geom = drawSeries(id, points, unit, color, fillFromZero, false, undefined, dataX, invertY);
+    geom = drawSeries(id, points, unit, color, fillFromZero, false, undefined, dataX, invertY, limitLines);
   };
   cv.onmouseleave = ()=>{
-    geom = drawSeries(id, points, unit, color, fillFromZero, false, undefined, null, invertY);
+    geom = drawSeries(id, points, unit, color, fillFromZero, false, undefined, null, invertY, limitLines);
   };
+}
+
+/* Decides which capacity line(s) belong on a diagram: only the side(s) the raw curve actually
+   reaches (beyond a small epsilon, so a curve that's mathematically all-positive but touches
+   0.000 at a support doesn't spuriously draw both sides). posCap/negCap are magnitudes; the
+   returned "value" is already signed to match the curve's own raw sign convention (positive
+   side gets +posCap, negative side gets -negCap) so it plots through the same Y()/invertY
+   mapping as the curve itself — no separate sign handling needed at the call site. */
+function computeSidedLimitLines(rawValues, posCap, negCap, posLabelFn, negLabelFn){
+  if (!rawValues.length) return [];
+  const maxV = Math.max(...rawValues), minV = Math.min(...rawValues);
+  const scale = Math.max(Math.abs(maxV), Math.abs(minV), 1e-9);
+  const eps = scale*0.001;
+  const lines = [];
+  if (maxV > eps && posCap>0) lines.push({value:posCap, label:posLabelFn(posCap)});
+  if (minV < -eps && negCap>0) lines.push({value:-negCap, label:negLabelFn(negCap)});
+  return lines;
 }
 
 function hexA(hex, a){
@@ -2391,8 +2745,12 @@ function esc(s){
 function buildCodeCheckRows(R){
   const rows = [];
   rows.push({
-    check:'Bending Moment (M)', demand:fmt(R.fb,2)+' kN\u00b7m',
-    capacity: R.Fb? fmt(R.Fb,2)+' kN\u00b7m':'—', ratio: R.Fb? fmt(R.fb/R.Fb,2):'—', pass:R.bendingPass
+    check:'Sag Moment (M+)', demand:fmt(R.Msag,2)+' kN\u00b7m',
+    capacity: R.FbSag? fmt(R.FbSag,2)+' kN\u00b7m':'—', ratio: R.FbSag? fmt(R.Msag/R.FbSag,2):'—', pass:R.bendingSagPass
+  });
+  rows.push({
+    check:'Hog Moment (M\u2212)', demand:fmt(R.Mhog,2)+' kN\u00b7m',
+    capacity: R.FbHog? fmt(R.FbHog,2)+' kN\u00b7m':'—', ratio: R.FbHog? fmt(R.Mhog/R.FbHog,2):'—', pass:R.bendingHogPass
   });
   rows.push({
     check:'Shear Force (V)', demand:fmt(R.fv,2)+' kN',
@@ -2454,10 +2812,20 @@ function buildPrintReport(R){
       </table>`;
   }
 
+  const unstableHtml = (R.unstableSupports && R.unstableSupports.length)
+    ? `<div class="pr-unstable">
+         <div class="pr-unstable-title">⚠ UNSTABLE — TIE-DOWN REQUIRED</div>
+         <ul>${R.unstableSupports.map(r=>
+           `<li>Support S${r.index+1} (@ ${fmt(r.pos,2)} m) needs ${fmt(Math.abs(r.R),2)} kN of tie-down capacity to resist uplift — currently set to Free, which cannot resist it.</li>`
+         ).join('')}</ul>
+       </div>`
+    : '';
+
   root.innerHTML = `
     <div class="pr-page">
       <div class="pr-watermark">${watermarkText ? esc(watermarkText) : ''}</div>
       ${pageHeaderHtml('1 of 2')}
+      ${unstableHtml}
 
       <div class="pr-section-title">1. Beam schematic</div>
       <canvas id="printSchematic" height="170"></canvas>
@@ -2475,12 +2843,13 @@ function buildPrintReport(R){
 
       <div class="pr-section-title">3. Section properties</div>
       <table class="pr-table">
-        <thead><tr><th>Section</th><th>E</th><th>I</th><th>Allow. Bending Moment</th><th>Allow. Shear Force</th><th>Defl. limit</th></tr></thead>
+        <thead><tr><th>Section</th><th>E</th><th>I</th><th>Allow. Sag M</th><th>Allow. Hog M</th><th>Allow. Shear</th><th>Defl. limit</th></tr></thead>
         <tbody><tr>
           <td>${esc(sectionName)}</td>
           <td>${fmt(parseFloat(document.getElementById('propE').value)||0, 0)} MPa</td>
           <td>${fmt(parseFloat(document.getElementById('propI').value)||0, 0)} mm\u2074</td>
-          <td>${R.Fb ? fmt(R.Fb,2)+' kN\u00b7m' : '—'}</td>
+          <td>${R.FbSag ? fmt(R.FbSag,2)+' kN\u00b7m' : '—'}</td>
+          <td>${R.FbHog ? fmt(R.FbHog,2)+' kN\u00b7m' : '—'}</td>
           <td>${R.Fv ? fmt(R.Fv,2)+' kN' : '—'}</td>
           <td>L/${fmt(R.deflDenom,0)}</td>
         </tr></tbody>
@@ -2551,10 +2920,16 @@ function buildPrintReport(R){
 
   // redraw clean, print-safe versions of the diagrams into the report canvases
   const pageW = 680;
+  const printShearLimits = computeSidedLimitLines(R.diag.map(d=>d.V), R.Fv, R.Fv,
+    cap=>'Allow. V = '+fmt(cap,2)+' kN', cap=>'Allow. V = \u2212'+fmt(cap,2)+' kN');
+  const printMomentLimits = computeSidedLimitLines(R.diag.map(d=>d.M), R.FbSag, R.FbHog,
+    cap=>'Allow. Sag M = '+fmt(cap,2)+' kN\u00b7m', cap=>'Allow. Hog M = '+fmt(cap,2)+' kN\u00b7m');
   drawSchematic(R, 'printSchematic', true, {forceWidth:pageW, forceScale:2.5});
-  drawSeries('printShear', R.diag.map(d=>({x:d.x,y:d.V})), 'kN', '#6FD6E8', false, true, {forceWidth:pageW, forceScale:2.5});
-  drawSeries('printMoment', R.diag.map(d=>({x:d.x,y:d.M})), 'kN·m', '#F2A93B', true, true, {forceWidth:pageW, forceScale:2.5}, undefined, true);
-  drawSeries('printDefl', R.deflSamples.map(d=>({x:d.x,y:d.defl_mm})), 'mm', '#5FCB8D', false, true, {forceWidth:pageW, forceScale:2.5});
+  drawSeries('printShear', R.diag.map(d=>({x:d.x,y:d.V})), 'kN', '#6FD6E8', false, true, {forceWidth:pageW, forceScale:2.5}, undefined, false, printShearLimits);
+  drawSeries('printMoment', R.diag.map(d=>({x:d.x,y:d.M})), 'kN·m', '#F2A93B', true, true, {forceWidth:pageW, forceScale:2.5}, undefined, true, printMomentLimits);
+  const printDeflLimits = computeSidedLimitLines(R.deflSamples.map(d=>d.defl_mm), R.deflAllowIn, R.deflAllowIn,
+    cap=>'Defl. Limit = '+fmt(cap,1)+' mm (L/'+fmt(R.deflDenom,0)+')', cap=>'Defl. Limit = \u2212'+fmt(cap,1)+' mm (L/'+fmt(R.deflDenom,0)+')');
+  drawSeries('printDefl', R.deflSamples.map(d=>({x:d.x,y:d.defl_mm})), 'mm', '#5FCB8D', false, true, {forceWidth:pageW, forceScale:2.5}, undefined, false, printDeflLimits);
 }
 
 document.getElementById('reportBtn').addEventListener('click', ()=>{
@@ -2578,7 +2953,8 @@ function serializeModel(){
     sectionName: document.getElementById('sectionName').value,
     propE: document.getElementById('propE').value,
     propI: document.getElementById('propI').value,
-    allowFb: document.getElementById('allowFb').value,
+    allowFbSag: document.getElementById('allowFbSag').value,
+    allowFbHog: document.getElementById('allowFbHog').value,
     allowFv: document.getElementById('allowFv').value,
     deflLimit: document.getElementById('deflLimit').value,
     project: {
@@ -2605,7 +2981,15 @@ function applyModel(data){
     setVal('sectionName', data.sectionName);
     setVal('propE', data.propE);
     setVal('propI', data.propI);
-    setVal('allowFb', data.allowFb);
+    // allowFbSag/allowFbHog is the current format; a model saved before this feature only
+    // has one "allowFb" value — apply it to both, same as the symmetric-section default.
+    if (data.allowFbSag!=null || data.allowFbHog!=null){
+      setVal('allowFbSag', data.allowFbSag);
+      setVal('allowFbHog', data.allowFbHog);
+    } else if (data.allowFb!=null){
+      setVal('allowFbSag', data.allowFb);
+      setVal('allowFbHog', data.allowFb);
+    }
     setVal('allowFv', data.allowFv);
     setVal('deflLimit', data.deflLimit);
     if (data.project){
@@ -2656,7 +3040,8 @@ const EXCEL_FIELD_ALIASES = {
   tribWidth: ['tribwidth','tributarywidth','trib'],
   propE: ['e','modulus','elasticmodulus','youngsmodulus'],
   propI: ['i','momentofinertia','inertia'],
-  allowFb: ['fb','mb','allowbend','allowablebending','bendingcapacity','momentcapacity','allowablemoment','ratedmoment','allowbendingmoment'],
+  allowFbSag: ['fb','mb','mbsag','allowbend','allowablebending','bendingcapacity','momentcapacity','allowablemoment','ratedmoment','allowbendingmoment','fbsag','msag','sagmoment','sagcapacity','allowsagmoment','allowablesaggingmoment'],
+  allowFbHog: ['fbhog','mbhog','mhog','hogmoment','hoggingmoment','hogcapacity','allowhogmoment','allowablehoggingmoment','hoggingcapacity'],
   allowFv: ['fv','vb','allowshear','allowableshear','shearcapacity','ratedshear','allowableshearforce','allowshearforce'],
   deflLimit: ['defllimit','deflectionlimit','deflratio','ldenom','deflectionratio']
 };
@@ -2690,7 +3075,11 @@ function applyExcelFields(fields, name){
   setFieldVal('tribWidth', fields.tribWidth);
   setFieldVal('propE', fields.propE);
   setFieldVal('propI', fields.propI);
-  setFieldVal('allowFb', fields.allowFb);
+  setFieldVal('allowFbSag', fields.allowFbSag);
+  // Most sections are symmetric (equal sag/hog capacity) — default Hog to whatever Sag was
+  // just set to unless the sheet had its own Hog column, so a plain single-capacity sheet
+  // still "just works" without the user having to fill in a field they've never had before.
+  setFieldVal('allowFbHog', fields.allowFbHog!=null ? fields.allowFbHog : fields.allowFbSag);
   setFieldVal('allowFv', fields.allowFv);
   setFieldVal('deflLimit', fields.deflLimit);
   if (name) setFieldVal('sectionName', name);
@@ -2698,7 +3087,7 @@ function applyExcelFields(fields, name){
 
 const EXCEL_FIELD_LABELS = {
   beamLength:'Length (m)', tribWidth:'Trib. width (m)', propE:'E (MPa)', propI:'I (mm\u2074)',
-  allowFb:'Mb (kN\u00b7m)', allowFv:'Vb (kN)', deflLimit:'Defl. limit (L/)'
+  allowFbSag:'Mb Sag (kN\u00b7m)', allowFbHog:'Mb Hog (kN\u00b7m)', allowFv:'Vb (kN)', deflLimit:'Defl. limit (L/)'
 };
 
 /* ---- Persistent saved-beams library (survives across sessions, browser-local) ---- */
@@ -2756,6 +3145,18 @@ document.getElementById('clearLibraryBtn').addEventListener('click', ()=>{
   renderSectionLibraryDropdown();
 });
 renderSectionLibraryDropdown();
+
+// Hog capacity defaults to whatever Sag is set to (the common symmetric-section case) —
+// once the user types directly into Hog, it decouples and is left alone from then on.
+(function(){
+  const sagEl = document.getElementById('allowFbSag');
+  const hogEl = document.getElementById('allowFbHog');
+  if (!sagEl || !hogEl) return;
+  sagEl.addEventListener('input', ()=>{
+    if (hogEl.dataset.userEdited !== '1') hogEl.value = sagEl.value;
+  });
+  hogEl.addEventListener('input', ()=>{ hogEl.dataset.userEdited = '1'; });
+})();
 
 function openExcelPreview(rows){
   const root = document.getElementById('tableOverlayRoot');
