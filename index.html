@@ -1732,6 +1732,7 @@ let schematicGeom = null;
 let hitRegions = [];
 let dragCandidate = null; // {type, index, startX, startY} — set on mousedown, promoted once past a small movement threshold
 let draggingItem = null;  // {type, index} — only non-null once an actual drag is underway
+let hoveredItem = null;   // {type, index} — the item currently under the cursor, for a visual highlight
 
 function drawSchematic(R, canvasId, printMode, canvasOpts){
   canvasId = canvasId || 'cvSchematic';
@@ -1881,6 +1882,28 @@ function drawSchematic(R, canvasId, printMode, canvasOpts){
     if (!printMode) hitRegions.push({type:'support', index:i, x1:x-16, y1:baseY-2, x2:x+16, y2:baseY+42});
   });
 
+  // Hover highlight — a glowing outline around the exact hit region the cursor is currently
+  // inside, so it's obvious which item a click/drag will grab before committing to it (this
+  // is what people were missing: the visible triangle/arrow is often smaller than its actual
+  // click target, so the highlight shows the real boundary, not just the drawn shape).
+  if (!printMode && hoveredItem && !draggingItem){
+    const hr = hitRegions.find(r=>r.type===hoveredItem.type && r.index===hoveredItem.index);
+    if (hr){
+      const pad = 4;
+      const rx = hr.x1-pad, ry = hr.y1-pad, rw = (hr.x2-hr.x1)+pad*2, rh = (hr.y2-hr.y1)+pad*2;
+      ctx.save();
+      ctx.shadowColor = 'rgba(242,169,59,0.7)';
+      ctx.shadowBlur = 10;
+      ctx.strokeStyle = '#F2A93B';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(rx, ry, rw, rh, 5); else ctx.rect(rx, ry, rw, rh);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
   // dimension line
   ctx.strokeStyle=T.dim;
   ctx.beginPath(); ctx.moveTo(X(0), 155); ctx.lineTo(X(L),155); ctx.stroke();
@@ -1939,6 +1962,7 @@ function attachSchematicEvents(){
   cv.addEventListener('contextmenu', onSchematicContextMenu);
   cv.addEventListener('mousedown', onSchematicMouseDown);
   cv.addEventListener('mousemove', onSchematicHoverCursor);
+  cv.addEventListener('mouseleave', onSchematicHoverLeave);
 }
 
 const UDL_EDGE_HANDLE_PX = 8; // how close to a UDL's start/end line counts as grabbing that edge
@@ -1951,12 +1975,22 @@ function udlModeAtX(u, px){
   return 'move';
 }
 
+function sameHoverTarget(a, b){
+  return (!a && !b) || (a && b && a.type===b.type && a.index===b.index);
+}
+
 function onSchematicHoverCursor(e){
   if (draggingItem) return; // the active drag handler owns the cursor while dragging
   const cv = document.getElementById('cvSchematic');
   if (!cv) return;
   const pos = canvasMousePos(e);
   const hit = hitTest(pos.x, pos.y);
+  const isHoverable = hit && (hit.type==='support' || hit.type==='pointload' || hit.type==='udl');
+  const newHover = isHoverable ? {type: hit.type, index: hit.index} : null;
+  if (!sameHoverTarget(newHover, hoveredItem)){
+    hoveredItem = newHover;
+    if (lastResults) drawSchematic(lastResults, 'cvSchematic', false); // redraw only when the target actually changes
+  }
   if (!hit){ cv.style.cursor = 'pointer'; return; }
   if (hit.type==='support' || hit.type==='pointload'){ cv.style.cursor = 'grab'; return; }
   if (hit.type==='udl'){
@@ -1965,6 +1999,13 @@ function onSchematicHoverCursor(e){
     return;
   }
   cv.style.cursor = 'pointer';
+}
+
+function onSchematicHoverLeave(){
+  if (hoveredItem){
+    hoveredItem = null;
+    if (lastResults) drawSchematic(lastResults, 'cvSchematic', false);
+  }
 }
 
 function beamXFromClientX(clientX){
