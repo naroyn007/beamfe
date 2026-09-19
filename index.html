@@ -340,35 +340,37 @@
   .print-report{display:none;}
   .pr-page{background:#ffffff;color:#111827;font-family:'IBM Plex Mono','SFMono-Regular',Consolas,monospace;
     width:100%;max-width:800px;margin:0 auto;padding:36px 40px;}
-  .pr-titleblock{display:flex;justify-content:space-between;align-items:center;
+  /* align-items:flex-start (not center) — with center, a short/simple company-info block
+     pulled the taller title+analysis+date block down to match its own visual center,
+     which read as the title sitting too low. Top-aligning both blocks fixes that. */
+  .pr-titleblock{display:flex;justify-content:space-between;align-items:flex-start;
     border-bottom:2px solid var(--pr-accent, #7f1d1d);padding-bottom:12px;margin-bottom:16px;gap:16px;}
   .pr-titleblock h1{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:22px;font-weight:700;
     letter-spacing:1px;margin:0;color:#111827;text-transform:uppercase;}
   .pr-titleblock .pr-sub{font-size:11px;color:#4b5563;margin-top:3px;}
+  .pr-titleblock .pr-sub-date{font-size:11px;color:#4b5563;margin-top:2px;}
+  .pr-titleblock .pr-sub-date b{color:#111827;}
   .pr-titleblock .pr-meta{text-align:right;font-size:11px;color:#4b5563;line-height:1.7;}
   .pr-titleblock .pr-meta b{color:#111827;}
   /* Company branding: company details + logo, inline on the same row as the report
      title (not a separate row) — details first, logo to its right. Only rendered
      at all when at least one branding field is set (see pageHeaderHtml JS). */
-  .pr-brand-inline{display:flex;align-items:center;gap:14px;flex:0 0 auto;margin-left:auto;}
+  .pr-brand-inline{display:flex;align-items:flex-start;gap:14px;flex:0 0 auto;margin-left:auto;}
   .pr-brand-info{font-size:10.5px;color:#6b7280;line-height:1.45;text-align:right;}
   .pr-brand-name{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:13.5px;font-weight:700;
     letter-spacing:0.3px;color:#111827;text-transform:uppercase;}
   .pr-brand-address{color:#6b7280;white-space:pre-line;}
   .pr-brand-desc{color:#6b7280;font-style:italic;}
-  /* The logo container follows the uploaded image's intrinsic dimensions/aspect ratio.
-     It is only constrained by the report's maximum logo size, so square, wide, and
-     tall uploads keep their natural proportions without being stretched to the
-     company-info height. align-self:center prevents the flex row from stretching it. */
-  .pr-brand-logo{flex:0 0 auto;align-self:center;width:max-content;height:max-content;
-    max-width:210px;max-height:90px;display:flex;align-items:center;justify-content:flex-end;}
-  .pr-brand-logo img{display:block;width:auto;height:auto;max-width:210px;max-height:90px;object-fit:contain;}
-  /* Footer: disclaimer text on its own line, then a 3-column row so the page number
-     sits truly centered on the sheet regardless of how long the date text is (two
-     empty/text side columns of equal width keep the center column centered). */
-  .pr-footer-meta{display:grid;grid-template-columns:1fr 1fr 1fr;align-items:center;margin-top:6px;}
-  .pr-footer-date{text-align:left;}
-  .pr-footer-page{text-align:center;}
+  /* Natural dimensions: only the height is constrained, width follows the image's own
+     aspect ratio (no independent width cap forcing it into a fixed-ratio box) — a wide
+     wordmark, a square icon and a tall mark all render at their true proportions. The
+     generous max-width is a pure safety net for an extreme edge case, not a working
+     constraint for a normal logo. */
+  .pr-brand-logo{flex:0 0 auto;display:flex;align-items:flex-start;}
+  .pr-brand-logo img{display:block;width:auto;height:auto;max-height:64px;max-width:260px;object-fit:contain;}
+  /* Footer: just the disclaimer (page 2 only, see pageFooterHtml) and a centered page
+     number — Date now lives in the header instead. */
+  .pr-footer-meta{margin-top:6px;text-align:center;}
   .pr-footer-meta b{color:#374151;}
   .pr-analysis-id{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:11.5px;
     letter-spacing:0.8px;text-transform:uppercase;color:#4b5563;margin:0 0 8px;
@@ -459,7 +461,13 @@
     body{background:#fff;padding:0;}
     .wrap, #floatPopup, #ctxMenu, #tableOverlayRoot, #licenseGate{display:none !important;}
     .print-report{display:block !important;}
-    .pr-page{padding:0;max-width:none;}
+    /* height:100vh maps to one physical page's content box in a paginated print
+       context; flex-column + .pr-body{flex:1} then pushes .pr-footer down to the true
+       bottom edge of that page, rather than it floating right after whatever content
+       happens to precede it. Each split .pr-page/.pr-page2 div already corresponds to
+       exactly one physical sheet, so this applies per-page, not just once overall. */
+    .pr-page{padding:0;max-width:none;height:100vh;display:flex;flex-direction:column;}
+    .pr-body{flex:1 1 auto;}
     .pr-page-break{page-break-before:always;break-before:page;}
     .pr-table, .pr-diagrams>div, .pr-titleblock, .pr-infogrid{page-break-inside:avoid;break-inside:avoid;}
     .pr-watermark{
@@ -3441,6 +3449,7 @@ function buildPrintReportSingle(R, meta){
         <div>
           <h1>Beam analysis report</h1>
           <div class="pr-sub"><b>${esc(analysisName)}</b></div>
+          <div class="pr-sub-date">Date <b>${esc(dateDisplay)}</b></div>
         </div>
         ${brandInlineHtml}
       </div>
@@ -3457,18 +3466,16 @@ function buildPrintReportSingle(R, meta){
       </table>`;
   }
 
-  // Page number moved out of the header (was in .pr-meta) and Date moved down here too,
-  // per page — each physical sheet gets its own footer with the correct sheetLabel, not
-  // just the last sheet of the report.
-  function pageFooterHtml(sheetLabel){
+  // Page number only (Date moved up into the header, under the analysis name). The
+  // disclaimer now shows only on the sheet where showDisclaimer is true — page 1 no
+  // longer repeats it, page 2 keeps it as the one place it's stated.
+  function pageFooterHtml(sheetLabel, showDisclaimer){
     return `
       <div class="pr-footer">
-        <div class="pr-footer-disclaimer">BEAM//FE — client-side finite element solver (Euler–Bernoulli beam elements, direct stiffness method).
-        Preliminary design aid — verify against applicable code and a licensed engineer's stamp before construction use.</div>
+        ${showDisclaimer ? `<div class="pr-footer-disclaimer">BEAM//FE — client-side finite element solver (Euler–Bernoulli beam elements, direct stiffness method).
+        Preliminary design aid — verify against applicable code and a licensed engineer's stamp before construction use.</div>` : ''}
         <div class="pr-footer-meta">
-          <span class="pr-footer-date">Date <b>${esc(dateDisplay)}</b></span>
           <span class="pr-footer-page">Page <b>${esc(sheetLabel)}</b></span>
-          <span></span>
         </div>
       </div>`;
   }
@@ -3499,6 +3506,7 @@ function buildPrintReportSingle(R, meta){
   root.innerHTML = `
     <div class="pr-page${densePrint ? ' pr-dense' : ''}${ultraDensePrint ? ' pr-ultra-dense' : ''}" style="--pr-accent:${pdfAccentEl ? pdfAccentEl.value : '#7f1d1d'};--pr-accent-text:${pdfAccentTextColor(pdfAccentEl ? pdfAccentEl.value : '#7f1d1d')};">
       <div class="pr-watermark">${watermarkText ? esc(watermarkText) : ''}</div>
+      <div class="pr-body">
       ${pageHeaderHtml(page1Label)}
       ${unstableHtml}
 
@@ -3570,8 +3578,11 @@ function buildPrintReportSingle(R, meta){
       </table>
 
       ${codeCheckOnPage2 ? '' : codeCheckHtml}
-      ${pageFooterHtml(page1Label)}
-      ${codeCheckOnPage2 ? '<div class="pr-page-break"></div>' + pageHeaderHtml(page2Label) + codeCheckHtml : '<div class="pr-page-break"></div>' + pageHeaderHtml(page2Label)}
+      </div>
+      ${pageFooterHtml(page1Label, false)}
+      <div class="pr-page-break"></div>
+      <div class="pr-body">
+      ${codeCheckOnPage2 ? pageHeaderHtml(page2Label) + codeCheckHtml : pageHeaderHtml(page2Label)}
 
       <div class="pr-section-title">7. Shear, moment and deflection diagrams</div>
       <div class="pr-diagrams">
@@ -3579,8 +3590,8 @@ function buildPrintReportSingle(R, meta){
         <div><canvas id="printMoment" height="150"></canvas><div class="pr-diagram-cap">Moment (M) — max ${fmt(R.Mabs,2)} kN·m at x = ${fmt(R.MabsAtX,2)} m</div></div>
         <div><canvas id="printDefl" height="150"></canvas><div class="pr-diagram-cap">Deflection (Δ) — max ${fmt(R.Dabs,2)} mm at x = ${fmt(R.DabsX,2)} m</div></div>
       </div>
-
-      ${pageFooterHtml(page2Label)}
+      </div>
+      ${pageFooterHtml(page2Label, true)}
     </div>`;
 
   // Split the two logical sheets into two real print-page containers.
