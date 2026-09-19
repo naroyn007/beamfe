@@ -92,6 +92,7 @@
     width:100%;background:var(--navy-deep);border:1px solid var(--blue-line-dim);
     color:var(--paper);padding:7px 8px;font-family:var(--mono);font-size:13px;border-radius:2px;
   }
+  input:disabled, select:disabled{opacity:0.4;cursor:not-allowed;}
   input:focus, select:focus{outline:1px solid var(--cyan);border-color:var(--cyan);}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
   .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
@@ -1901,7 +1902,7 @@ function renderResults(R, afterDraw){
           </div>
           <div class="schematic-field">
             <label>Trib. Width (m)</label>
-            <input type="number" id="tribWidth" value="${R.trib}" min="0" step="0.1">
+            <input type="number" id="tribWidth" value="${R.trib}" min="0" step="0.1" ${udlModeGlobal!=='area'?'disabled':''}>
           </div>
           <div class="schematic-field">
             <label>UDL Input</label>
@@ -2339,9 +2340,12 @@ function drawSchematic(R, canvasId, printMode, canvasOpts){
       ctx.setLineDash([]);
     }
 
-    ctx.fillStyle = hl ? TT.labelText : ((liftedOff || uplift) ? T.liftedStroke : T.labelText);
+    ctx.fillStyle = hl ? TT.labelText : ((liftedOff || (uplift && s.type!=='tie')) ? T.liftedStroke : T.labelText);
     ctx.font='10px IBM Plex Mono';
-    const labelText = liftedOff ? 'LIFTED @'+fmt(s.pos,1)+'m' : uplift ? 'FREE ⚠ @'+fmt(s.pos,1)+'m' : (s.type==='free'?'FREE':'TIE')+' @'+fmt(s.pos,1)+'m';
+    const labelText = liftedOff ? 'LIFTED @'+fmt(s.pos,1)+'m'
+      : s.type==='tie' ? 'TIE @'+fmt(s.pos,1)+'m'
+      : uplift ? 'FREE ⚠ @'+fmt(s.pos,1)+'m'
+      : 'FREE @'+fmt(s.pos,1)+'m';
     ctx.fillText(labelText, x-24, baseY+38);
     if (hl) ctx.restore();
     if (!printMode) hitRegions.push({type:'support', index:i, x1:x-16, y1:baseY-2, x2:x+16, y2:baseY+42});
@@ -3272,7 +3276,7 @@ function buildPrintReportSingle(R, meta){
           <td>${fmt(R.L,2)} m</td>
           <td>${esc(supSummary)}</td>
           <td>${esc(loadSummary)}</td>
-          <td>${fmt(R.trib,2)} m</td>
+          <td>${udlModeGlobal==='area' ? fmt(R.trib,2)+' m' : '—'}</td>
         </tr></tbody>
       </table>
 
