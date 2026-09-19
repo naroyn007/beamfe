@@ -431,7 +431,7 @@
   .pr-page.pr-page2 .pr-titleblock{margin-bottom:9px;padding-bottom:8px;}
   .pr-page.pr-page2 .pr-infogrid{margin-bottom:8px;font-size:10px;}
   .pr-page.pr-page2 .pr-infogrid td{padding-top:3px;padding-bottom:3px;}
-  .pr-page.pr-page2 .pr-section-title{margin-top:6px;margin-bottom:4px;padding:0;background:none !important;color:#111827;}
+  .pr-page.pr-page2 .pr-section-title{margin-top:18px;margin-bottom:4px;padding:0;background:none !important;color:#111827;}
   .pr-page.pr-page2 .pr-footer{margin-top:10px;padding-top:6px;font-size:8.5px;line-height:1.35;}
   .pr-page.pr-page2 .pr-diagrams{gap:6px;margin-bottom:2px;}
   .pr-page.pr-page2 .pr-diagram-cap{font-size:8.5px;}
@@ -2124,6 +2124,7 @@ function renderResults(R, afterDraw){
           <button class="qa-btn" id="qaSupport">+ Support</button>
           <button class="qa-btn" id="qaPointLoad">+ Point Load</button>
           <button class="qa-btn" id="qaUdl">+ Distributed Load</button>
+          <button class="qa-btn" id="qaConcretePressure">+ Concrete Pressure</button>
           <span style="flex:1;"></span>
           <span class="field-note" style="align-self:center;">drag to move &middot; drag UDL edges to resize &middot; double-click to edit &middot; right-click for tables</span>
         </div>
@@ -2252,6 +2253,7 @@ function renderResults(R, afterDraw){
     const idx = addUdlDefault();
     runAnalysis(()=> openEditorFor('udl', idx, true));
   });
+  document.getElementById('qaConcretePressure').addEventListener('click', openConcretePressureCalc);
 }
 
 function statusTag(pass){
@@ -3016,6 +3018,117 @@ function openEditorFor(type, index, isNew, clientX, clientY){
   });
   root.querySelectorAll('input,select').forEach(el=>{
     el.addEventListener('keydown', ev=>{ if (ev.key==='Enter'){ onSave(); closeAllPopups(); } });
+  });
+}
+
+/* ---- Concrete pour pressure calculator ----
+   Pmax (the design formwork pressure — from rate of placement, temperature, chemistry/
+   unit-weight coefficients per ACI 347 or whatever method was used) is a direct user
+   input, not computed here — that calculation depends on values and a formula this tool
+   doesn't own, and guessing at the coefficients would be irresponsible for a safety-
+   critical load. What this DOES compute is the resulting load shape: pressure ramps
+   linearly from 0 at Start up to Pmax at depth h1 = Pmax / Unit Wt, then stays flat at
+   Pmax for the rest of the pour height — the standard capped/trapezoidal profile. That's
+   built as two Area-mode UDLs (triangular ramp, then uniform plateau), or just one
+   triangular UDL if Pmax happens to equal the full uncapped hydrostatic value (no
+   plateau). Per ACI 347, pressure is never greater than the full hydrostatic head
+   (Unit Wt × Pour Height), so Pmax above that is rejected as physically invalid rather
+   than silently accepted. End = Start + Pour Height, per the explicit convention
+   requested — a deliberate simplification for this workflow, not a general UDL
+   placement rule. */
+function openConcretePressureCalc(){
+  const root = document.getElementById('floatPopup');
+  const x = window.innerWidth/2, y = window.innerHeight/2;
+  root.innerHTML = `
+    <div class="float-popup" id="fpBox" style="left:${x}px; top:${y}px;">
+      <div class="fp-head"><span>Concrete Pour Pressure</span><span class="fp-close" id="fpClose">✕</span></div>
+      <div class="fp-body">
+        <div class="row2">
+          <div><label>Unit Wt (kN/m&sup3;)</label><input type="number" step="0.5" id="cc_unitWt" value="25"></div>
+          <div><label>Pour Height (m)</label><input type="number" step="0.1" id="cc_pourH" value="0"></div>
+        </div>
+        <div class="row2">
+          <div><label>Pmax (kN/m&sup2;)</label><input type="number" step="0.5" id="cc_pmax" value="0"></div>
+          <div><label>Start (m)</label><input type="number" step="0.1" id="cc_start" value="0"></div>
+        </div>
+        <div class="field-note">Enter the design pressure you've already calculated (rate of placement, temperature, ACI 347 coefficients, etc.) — not computed here.</div>
+        <div class="field-note" id="cc_preview"></div>
+        <div class="field-note" id="cc_warning" style="color:var(--red);"></div>
+      </div>
+      <div class="fp-actions">
+        <button class="fp-save" id="ccAdd">Add</button>
+        <button class="fp-delete" id="ccCancel">Cancel</button>
+      </div>
+    </div>`;
+
+  // clamp popup within viewport (same technique as the editor popup above)
+  const box = document.getElementById('fpBox');
+  const bw = 250, bh = box.offsetHeight || 260;
+  let lx = x - bw/2, ly = y - bh/2;
+  if (lx < 8) lx = 8;
+  if (lx + bw > window.innerWidth-8) lx = window.innerWidth-8-bw;
+  if (ly < 8) ly = 8;
+  box.style.left = lx+'px';
+  box.style.top = ly+'px';
+
+  const addBtn = document.getElementById('ccAdd');
+  function readInputs(){
+    const unitWt = parseFloat(document.getElementById('cc_unitWt').value)||0;
+    const pourH = parseFloat(document.getElementById('cc_pourH').value)||0;
+    const pmax = parseFloat(document.getElementById('cc_pmax').value)||0;
+    const start = parseFloat(document.getElementById('cc_start').value)||0;
+    const end = start + pourH;
+    const fullHydro = unitWt * pourH; // uncapped hydrostatic pressure — the physical ceiling for Pmax
+    const h1 = unitWt>0 ? pmax/unitWt : 0; // depth at which the ramp reaches Pmax
+    const isTrapezoid = pmax < fullHydro - 1e-6; // false ⇒ Pmax reaches the full value, pure triangle, no plateau
+    return {unitWt, pourH, pmax, start, end, fullHydro, h1, isTrapezoid};
+  }
+  function update(){
+    const v = readInputs();
+    const preview = document.getElementById('cc_preview');
+    const warning = document.getElementById('cc_warning');
+    preview.innerHTML = `End = Start + Pour Height = <b>${fmt(v.end,2)} m</b> &middot; Full hydrostatic (uncapped) = <b>${fmt(v.fullHydro,2)} kN/m&sup2;</b>`
+      + (v.isTrapezoid
+        ? ` &middot; ramps 0 &rarr; Pmax over the first <b>${fmt(v.h1,2)} m</b>, then flat at Pmax`
+        : ` &middot; Pmax reaches the full hydrostatic value — pure triangular ramp, no plateau`);
+    if (v.pourH<=0){
+      warning.textContent = 'Enter a pour height greater than zero.';
+      addBtn.disabled = true;
+    } else if (v.pmax<=0){
+      warning.textContent = 'Enter a Pmax greater than zero.';
+      addBtn.disabled = true;
+    } else if (v.pmax > v.fullHydro + 1e-6){
+      warning.textContent = `Pmax can't exceed the full hydrostatic pressure (${fmt(v.fullHydro,2)} kN/m\u00b2 = Unit Wt \u00d7 Pour Height) — pressure is never greater than that.`;
+      addBtn.disabled = true;
+    } else if (v.end > beamLengthValue){
+      warning.textContent = `Pour height extends beyond the beam length (${fmt(beamLengthValue,2)} m available, ends at ${fmt(v.end,2)} m).`;
+      addBtn.disabled = true;
+    } else {
+      warning.textContent = '';
+      addBtn.disabled = false;
+    }
+  }
+  ['cc_unitWt','cc_pourH','cc_pmax','cc_start'].forEach(id=>{
+    document.getElementById(id).addEventListener('input', update);
+  });
+  update();
+
+  document.getElementById('fpClose').addEventListener('click', closeAllPopups);
+  document.getElementById('ccCancel').addEventListener('click', closeAllPopups);
+  addBtn.addEventListener('click', ()=>{
+    if (addBtn.disabled) return;
+    const v = readInputs();
+    if (v.isTrapezoid){
+      udls.push({start:v.start, end:v.start+v.h1, mode:'area', magStart:0, magEnd:v.pmax});
+      udls.push({start:v.start+v.h1, end:v.end, mode:'area', magStart:v.pmax, magEnd:v.pmax});
+    } else {
+      udls.push({start:v.start, end:v.end, mode:'area', magStart:0, magEnd:v.pmax});
+    }
+    closeAllPopups();
+    runAnalysis();
+  });
+  root.querySelectorAll('input').forEach(el=>{
+    el.addEventListener('keydown', ev=>{ if (ev.key==='Enter' && !addBtn.disabled) addBtn.click(); });
   });
 }
 
