@@ -88,12 +88,13 @@
   .stack{display:flex;flex-direction:column;gap:14px;}
 
   label{font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--blue-line-dim);display:block;margin-bottom:4px;}
-  input[type=number], input[type=text], input[type=password], input[type=date], select{
+  input[type=number], input[type=text], input[type=password], input[type=date], select, textarea{
     width:100%;background:var(--navy-deep);border:1px solid var(--blue-line-dim);
     color:var(--paper);padding:7px 8px;font-family:var(--mono);font-size:13px;border-radius:2px;
   }
+  textarea{resize:vertical;line-height:1.4;}
   input:disabled, select:disabled{opacity:0.4;cursor:not-allowed;}
-  input:focus, select:focus{outline:1px solid var(--cyan);border-color:var(--cyan);}
+  input:focus, select:focus, textarea:focus{outline:1px solid var(--cyan);border-color:var(--cyan);}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
   .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
   .row-auto{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;}
@@ -339,32 +340,30 @@
   .print-report{display:none;}
   .pr-page{background:#ffffff;color:#111827;font-family:'IBM Plex Mono','SFMono-Regular',Consolas,monospace;
     width:100%;max-width:800px;margin:0 auto;padding:36px 40px;}
-  .pr-titleblock{display:flex;justify-content:space-between;align-items:flex-start;
-    border-bottom:2px solid var(--pr-accent, #7f1d1d);padding-bottom:12px;margin-bottom:16px;}
+  .pr-titleblock{display:flex;justify-content:space-between;align-items:center;
+    border-bottom:2px solid var(--pr-accent, #7f1d1d);padding-bottom:12px;margin-bottom:16px;gap:16px;}
   .pr-titleblock h1{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:22px;font-weight:700;
     letter-spacing:1px;margin:0;color:#111827;text-transform:uppercase;}
   .pr-titleblock .pr-sub{font-size:11px;color:#4b5563;margin-top:3px;}
   .pr-titleblock .pr-meta{text-align:right;font-size:11px;color:#4b5563;line-height:1.7;}
   .pr-titleblock .pr-meta b{color:#111827;}
-  /* Company branding row: info (name/address/description) left, logo right. Only rendered
+  /* Company branding: logo + company details, inline on the same row as the report
+     title (not a separate row) — logo first, company info to its right. Only rendered
      at all when at least one branding field is set (see pageHeaderHtml JS). */
-  .pr-brandrow{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:10px;}
-  .pr-brand-info{font-size:10.5px;color:#6b7280;line-height:1.45;}
+  .pr-brand-inline{display:flex;align-items:center;gap:14px;flex:0 0 auto;}
+  .pr-brand-info{font-size:10.5px;color:#6b7280;line-height:1.45;text-align:right;}
   .pr-brand-name{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:13.5px;font-weight:700;
     letter-spacing:0.3px;color:#111827;text-transform:uppercase;}
-  .pr-brand-address{color:#6b7280;}
+  .pr-brand-address{color:#6b7280;white-space:pre-line;}
   .pr-brand-desc{color:#6b7280;font-style:italic;}
   /* Fixed-height box with object-fit:contain so any logo aspect ratio (wide wordmark,
      square icon, tall mark) scales down cleanly without distortion or cropping. */
-  .pr-brand-logo{flex:0 0 auto;height:44px;max-width:160px;display:flex;align-items:center;justify-content:flex-end;}
-  .pr-brand-logo img{max-height:44px;max-width:160px;width:auto;height:auto;object-fit:contain;}
-  .pr-page.pr-dense .pr-brandrow{margin-bottom:6px;}
-  .pr-page.pr-dense .pr-brand-logo{height:34px;}
-  .pr-page.pr-dense .pr-brand-logo img{max-height:34px;}
-  .pr-page.pr-ultra-dense .pr-brandrow{margin-bottom:4px;}
-  .pr-page.pr-ultra-dense .pr-brand-logo{height:28px;}
-  .pr-page.pr-ultra-dense .pr-brand-logo img{max-height:28px;}
-  .pr-page.pr-page2 .pr-brandrow{margin-bottom:6px;}
+  .pr-brand-logo{flex:0 0 auto;height:60px;max-width:210px;display:flex;align-items:center;}
+  .pr-brand-logo img{max-height:60px;max-width:210px;width:auto;height:auto;object-fit:contain;}
+  .pr-page.pr-dense .pr-brand-logo{height:46px;}
+  .pr-page.pr-dense .pr-brand-logo img{max-height:46px;}
+  .pr-page.pr-ultra-dense .pr-brand-logo{height:38px;}
+  .pr-page.pr-ultra-dense .pr-brand-logo img{max-height:38px;}
   /* Footer: disclaimer text on its own line, then a 3-column row so the page number
      sits truly centered on the sheet regardless of how long the date text is (two
      empty/text side columns of equal width keep the center column centered). */
@@ -521,6 +520,9 @@
   .license-msg.err{color:var(--red);}
   .license-msg.ok{color:var(--green);}
   .license-msg.pending{color:var(--blue-line-dim);}
+  #coSaveStatus.err{color:var(--red);}
+  #coSaveStatus.ok{color:var(--green);}
+  #coSaveStatus.pending{color:var(--blue-line-dim);}
   .license-note{font-size:10.5px;color:var(--blue-line-dim);margin-top:16px;line-height:1.6;}
   .license-or{font-size:10px;letter-spacing:0.5px;text-transform:uppercase;color:var(--blue-line-dim);text-align:center;margin:16px 0 10px;}
   .license-unlock-btn-secondary{background:none;border:1px solid var(--cyan);color:var(--cyan);}
@@ -654,21 +656,30 @@
         </div>
 
         <div class="stack">
-          <div class="section-title">Company Branding</div>
-          <div class="field-note" style="margin-top:-4px;">Shown in the header of every generated PDF report.</div>
-          <div class="row2">
-            <div><label>Company Name</label><input type="text" id="coName" placeholder="e.g. ROI Engineering"></div>
-            <div><label>Company Address</label><input type="text" id="coAddress" placeholder="e.g. 123 Example Ave, City"></div>
+          <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>Company Branding</span>
+            <button type="button" class="import-btn" id="coBrandingToggle">Minimize</button>
           </div>
-          <div><label>Company Description (optional)</label><input type="text" id="coDescription" placeholder="e.g. Structural Engineering &amp; Formwork Design"></div>
-          <div>
-            <label>Company Logo (optional)</label>
-            <input type="file" id="coLogoInput" accept="image/png,image/jpeg,image/svg+xml,image/webp" style="display:none;">
-            <div style="display:flex;align-items:center;gap:10px;">
-              <button type="button" class="import-btn" id="coLogoBtn">Choose Logo ⬆</button>
-              <img id="coLogoPreview" style="display:none;max-height:32px;max-width:120px;object-fit:contain;background:#fff;border-radius:2px;padding:2px;">
-              <button type="button" class="import-btn" id="coLogoRemoveBtn" style="display:none;">Remove Logo</button>
+          <div id="coBrandingBody">
+            <div class="field-note" style="margin-top:-4px;">Shown in the header of every generated PDF report.</div>
+            <div><label>Company Name</label><input type="text" id="coName" placeholder="e.g. ROI Engineering"></div>
+            <div><label>Company Address</label><textarea id="coAddress" rows="3" placeholder="e.g. 1 Tuas Ave 1&#10;Singapore 639519"></textarea></div>
+            <div><label>Company Description (optional)</label><input type="text" id="coDescription" placeholder="e.g. Structural Engineering &amp; Formwork Design"></div>
+            <div>
+              <label>Company Logo (optional)</label>
+              <input type="file" id="coLogoInput" accept="image/png,image/jpeg,image/svg+xml,image/webp" style="display:none;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <button type="button" class="import-btn" id="coLogoBtn">Choose Logo ⬆</button>
+                <img id="coLogoPreview" style="display:none;max-height:32px;max-width:120px;object-fit:contain;background:#fff;border-radius:2px;padding:2px;">
+                <button type="button" class="import-btn" id="coLogoRemoveBtn" style="display:none;">Remove Logo</button>
+              </div>
             </div>
+            <div class="pdf-accent-row">
+              <label for="pdfAccentColor">PDF Accent Color</label>
+              <input type="color" id="pdfAccentColor" value="#7f1d1d" title="PDF export accent color">
+              <span id="pdfAccentValue">#7F1D1D</span>
+            </div>
+            <div class="field-note" id="coSaveStatus" style="min-height:13px;"></div>
           </div>
         </div>
 
@@ -739,11 +750,6 @@
         </div>
 
         <button class="run-btn" id="runBtn">Run Analysis ▸</button>
-        <div class="pdf-accent-row">
-          <label for="pdfAccentColor">PDF Accent Color</label>
-          <input type="color" id="pdfAccentColor" value="#7f1d1d" title="PDF export accent color">
-          <span id="pdfAccentValue">#7F1D1D</span>
-        </div>
         <button class="report-btn" id="reportBtn">Generate Report (PDF) ⬇</button>
         <div class="row2" style="margin-top:8px;">
           <button class="report-btn" id="saveBtn">Save Model ⬇</button>
@@ -1299,9 +1305,11 @@ let analyses = [];
 // The logo file itself lives in the existing "company-assets" Storage bucket, under
 // user-logos/<uid>/logo.<ext> — public read (matches the bucket's existing convention),
 // write restricted to the owning user via RLS.
-let companyProfile = {name:'', address:'', description:'', logoUrl:'', logoDataUrl:''};
+// PDF accent color rides along in the same object/same Supabase row — it's the same
+// per-account report-identity concept as the logo/company text, not project data.
+let companyProfile = {name:'', address:'', description:'', logoUrl:'', logoDataUrl:'', accentColor:'#7f1d1d'};
 
-function companyProfileBlank(){ return {name:'', address:'', description:'', logoUrl:'', logoDataUrl:''}; }
+function companyProfileBlank(){ return {name:'', address:'', description:'', logoUrl:'', logoDataUrl:'', accentColor:'#7f1d1d'}; }
 
 async function loadCompanyProfileFromSupabase(){
   if (!sb) return;
@@ -1316,6 +1324,7 @@ async function loadCompanyProfileFromSupabase(){
     companyProfile.description = branding.description || '';
     companyProfile.logoUrl = branding.logoUrl || '';
     companyProfile.logoDataUrl = '';
+    companyProfile.accentColor = branding.accentColor || '#7f1d1d';
     loadCompanyProfileToDom();
     if (companyProfile.logoUrl) await hydrateLogoDataUrl();
   }catch(err){
@@ -1344,24 +1353,35 @@ async function hydrateLogoDataUrl(){
   }
 }
 
+function setCoSaveStatus(text, cls){
+  const el = document.getElementById('coSaveStatus');
+  if (!el) return;
+  el.textContent = text || '';
+  el.className = 'field-note' + (cls ? ' '+cls : '');
+}
+
 async function saveCompanyProfileFields(){
   if (!sb) return;
+  setCoSaveStatus('Saving…', 'pending');
   try{
     const {data:{user}} = await sb.auth.getUser();
-    if (!user) return;
+    if (!user){ setCoSaveStatus('Not saved — please sign in first.', 'err'); return; }
     const {data: existing} = await sb.from('user_settings').select('settings').eq('user_id', user.id).maybeSingle();
     const mergedSettings = Object.assign({}, (existing && existing.settings) || {}, {
       companyBranding: {
         name: companyProfile.name,
         address: companyProfile.address,
         description: companyProfile.description,
-        logoUrl: companyProfile.logoUrl
+        logoUrl: companyProfile.logoUrl,
+        accentColor: companyProfile.accentColor
       }
     });
     const {error} = await sb.from('user_settings').upsert({user_id:user.id, settings:mergedSettings, updated_at:new Date().toISOString()}, {onConflict:'user_id'});
     if (error) throw error;
+    setCoSaveStatus('Saved ✓', 'ok');
   }catch(err){
     console.error('Failed to save company branding', err);
+    setCoSaveStatus('Save failed: ' + (err.message || 'unknown error'), 'err');
   }
 }
 
@@ -1376,6 +1396,16 @@ function loadCompanyProfileToDom(){
   setFieldVal('coAddress', companyProfile.address);
   setFieldVal('coDescription', companyProfile.description);
   updateCompanyLogoPreview();
+  const accentEl = document.getElementById('pdfAccentColor');
+  if (accentEl && companyProfile.accentColor){
+    accentEl.value = companyProfile.accentColor;
+    if (typeof syncPdfAccentValue === 'function') syncPdfAccentValue();
+  }
+}
+function syncAccentColorFromDom(){
+  const accentEl = document.getElementById('pdfAccentColor');
+  companyProfile.accentColor = (accentEl && accentEl.value) || '#7f1d1d';
+  saveCompanyProfileFields();
 }
 function updateCompanyLogoPreview(){
   const img = document.getElementById('coLogoPreview');
@@ -1394,8 +1424,9 @@ function updateCompanyLogoPreview(){
 
 async function uploadCompanyLogo(file){
   if (!sb) return;
+  setCoSaveStatus('Uploading logo…', 'pending');
   const {data:{user}} = await sb.auth.getUser();
-  if (!user){ alert('Please sign in before uploading a logo.'); return; }
+  if (!user){ setCoSaveStatus('Not saved — please sign in first.', 'err'); return; }
   const ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g,'') || 'png';
   const path = 'user-logos/'+user.id+'/logo.'+ext;
   try{
@@ -1404,11 +1435,11 @@ async function uploadCompanyLogo(file){
     const {data:pub} = sb.storage.from('company-assets').getPublicUrl(path);
     // cache-bust so a re-upload under the same path shows immediately, not a stale cached copy
     companyProfile.logoUrl = pub.publicUrl + '?t=' + Date.now();
-    await saveCompanyProfileFields();
+    await saveCompanyProfileFields(); // sets its own Saved/failed status on completion
     await hydrateLogoDataUrl();
   }catch(err){
     console.error('Logo upload failed', err);
-    alert('Logo upload failed: ' + (err.message || 'unknown error'));
+    setCoSaveStatus('Logo upload failed: ' + (err.message || 'unknown error'), 'err');
   }
 }
 
@@ -3337,6 +3368,7 @@ function syncPdfAccentValue(){
 }
 if (pdfAccentEl){
   pdfAccentEl.addEventListener('input', syncPdfAccentValue);
+  pdfAccentEl.addEventListener('change', syncAccentColorFromDom);
   syncPdfAccentValue();
 }
 
@@ -3398,21 +3430,20 @@ function buildPrintReportSingle(R, meta){
         ${companyProfile.name ? `<div class="pr-brand-name">${esc(companyProfile.name)}</div>` : ''}
         ${companyProfile.address ? `<div class="pr-brand-address">${esc(companyProfile.address)}</div>` : ''}
         ${companyProfile.description ? `<div class="pr-brand-desc">${esc(companyProfile.description)}</div>` : ''}
-      </div>` : '<div></div>';
+      </div>` : '';
     const brandLogoHtml = companyProfile.logoDataUrl
       ? `<div class="pr-brand-logo"><img src="${companyProfile.logoDataUrl}" alt="Company logo"></div>` : '';
-    // Skip the whole row when there's no branding set at all — otherwise it'd leave a
-    // dead empty bar above the title. With only a logo (no text) or only text (no logo),
-    // the empty '<div></div>' info/logo slot above keeps the flex alignment correct.
-    const brandRowHtml = (hasBrandInfo || companyProfile.logoDataUrl)
-      ? `<div class="pr-brandrow">${brandInfoHtml}${brandLogoHtml}</div>` : '';
+    // Logo first, company details to its right — both inline with the report title,
+    // not a separate row. Skipped entirely when there's no branding set at all.
+    const brandInlineHtml = (hasBrandInfo || companyProfile.logoDataUrl)
+      ? `<div class="pr-brand-inline">${brandLogoHtml}${brandInfoHtml}</div>` : '';
     return `
-      ${brandRowHtml}
       <div class="pr-titleblock">
         <div>
           <h1>Beam analysis report</h1>
           <div class="pr-sub"><b>${esc(analysisName)}</b></div>
         </div>
+        ${brandInlineHtml}
       </div>
 
       <table class="pr-infogrid">
@@ -4088,6 +4119,23 @@ document.getElementById('coLogoInput').addEventListener('change', (e)=>{
   e.target.value = '';
 });
 document.getElementById('coLogoRemoveBtn').addEventListener('click', removeCompanyLogo);
+
+// Minimize/expand is a display preference only (not company data), so it's fine to keep
+// purely local rather than round-tripping it through Supabase.
+const CO_BRANDING_MINIMIZED_KEY = 'beamfe_co_branding_minimized';
+function setCoBrandingMinimized(minimized){
+  const body = document.getElementById('coBrandingBody');
+  const btn = document.getElementById('coBrandingToggle');
+  if (!body || !btn) return;
+  body.style.display = minimized ? 'none' : '';
+  btn.textContent = minimized ? 'Expand' : 'Minimize';
+  try{ localStorage.setItem(CO_BRANDING_MINIMIZED_KEY, minimized ? '1' : '0'); }catch(err){}
+}
+document.getElementById('coBrandingToggle').addEventListener('click', ()=>{
+  const body = document.getElementById('coBrandingBody');
+  setCoBrandingMinimized(body.style.display !== 'none');
+});
+try{ setCoBrandingMinimized(localStorage.getItem(CO_BRANDING_MINIMIZED_KEY) === '1'); }catch(err){}
 
 // initial run
 runAnalysis();
