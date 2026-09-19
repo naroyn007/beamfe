@@ -343,6 +343,13 @@
   }
   .pr-section-title:first-of-type{margin-top:0;}
   .pr-table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:4px;}
+  /* Model Summary headers stay on one line even when the model has many supports/loads. */
+  .pr-model-summary{table-layout:fixed;}
+  .pr-model-summary thead th{white-space:nowrap;font-size:9px;}
+  .pr-model-summary thead th:nth-child(1){width:18%;}
+  .pr-model-summary thead th:nth-child(2){width:27%;}
+  .pr-model-summary thead th:nth-child(3){width:37%;}
+  .pr-model-summary thead th:nth-child(4){width:18%;}
   /* Excel-style table headers: the whole header cell is filled, not just the text area. */
   /* Excel-style table headers: darker maroon fill with inverted white text. */
   .pr-table thead th{
@@ -2888,7 +2895,7 @@ function buildPrintReport(R){
       <canvas id="printSchematic" height="170"></canvas>
 
       <div class="pr-section-title pr-compact-no-rule">2. Model summary</div>
-      <table class="pr-table">
+      <table class="pr-table pr-model-summary">
         <thead><tr><th>Span length</th><th>Supports</th><th>Loads (combined case)</th><th>Tributary width</th></tr></thead>
         <tbody><tr>
           <td>${fmt(R.L,2)} m</td>
