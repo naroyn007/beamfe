@@ -345,6 +345,9 @@
   .pr-titleblock .pr-sub{font-size:11px;color:#4b5563;margin-top:3px;}
   .pr-titleblock .pr-meta{text-align:right;font-size:11px;color:#4b5563;line-height:1.7;}
   .pr-titleblock .pr-meta b{color:#111827;}
+  .pr-analysis-id{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:11.5px;
+    letter-spacing:0.8px;text-transform:uppercase;color:#4b5563;margin:0 0 8px;
+    border-left:3px solid var(--pr-accent, #7f1d1d);padding-left:7px;}
   .pr-infogrid{width:100%;font-size:11.5px;border-collapse:collapse;margin-bottom:22px;}
   .pr-infogrid td{padding:4px 0;}
   .pr-infogrid td.k{color:#6b7280;width:110px;}
@@ -3023,12 +3026,14 @@ function prTag(pass){
   return pass ? '<span class="pr-tag pr-tag-pass">PASS</span>' : '<span class="pr-tag pr-tag-fail">FAIL</span>';
 }
 
-function buildPrintReport(R){
-  const prjName = document.getElementById('prjName').value.trim() || '—';
-  const beamId = document.getElementById('prjBeamId').value.trim() || '—';
-  const by = document.getElementById('prjBy').value.trim() || '—';
-  const checked = document.getElementById('prjChecked').value.trim() || '—';
-  const dateVal = document.getElementById('prjDate').value;
+function buildPrintReportSingle(R, meta){
+  meta = meta || {};
+  const prjName = projectDetails.name || document.getElementById('prjName').value.trim() || '—';
+  const beamId = String(meta.beamId || '—').trim() || '—';
+  const by = projectDetails.by || document.getElementById('prjBy').value.trim() || '—';
+  const checked = projectDetails.checked || document.getElementById('prjChecked').value.trim() || '—';
+  const dateVal = projectDetails.date || document.getElementById('prjDate').value;
+  const analysisName = String(meta.analysisName || 'Analysis').trim() || 'Analysis';
   const dateDisplay = dateVal ? new Date(dateVal+'T00:00:00').toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}) : '—';
 
   const supSummary = R.supports.map((s,i)=>'S'+(i+1)+' '+(s.type==='tie'?'tie-down':'free')+' @ '+fmt(s.pos,2)+'m').join(', ');
@@ -3037,11 +3042,13 @@ function buildPrintReport(R){
     R.udls.length ? R.udls.length+' distributed load'+(R.udls.length>1?'s':'') : null
   ].filter(Boolean).join(' + ') || 'none';
 
-  const sectionName = document.getElementById('sectionName').value.trim() || '—';
+  const sectionName = String(meta.sectionName || document.getElementById('sectionName').value.trim() || '—').trim() || '—';
 
   const root = document.getElementById('printReport');
   const watermarkText = getLicenseWatermarkText();
 
+  const page1Label = meta.page1Label || '1 of 2';
+  const page2Label = meta.page2Label || '2 of 2';
   function pageHeaderHtml(sheetLabel){
     return `
       <div class="pr-titleblock">
@@ -3093,7 +3100,8 @@ function buildPrintReport(R){
   root.innerHTML = `
     <div class="pr-page${densePrint ? ' pr-dense' : ''}${ultraDensePrint ? ' pr-ultra-dense' : ''}" style="--pr-accent:${pdfAccentEl ? pdfAccentEl.value : '#7f1d1d'};--pr-accent-text:${pdfAccentTextColor(pdfAccentEl ? pdfAccentEl.value : '#7f1d1d')};">
       <div class="pr-watermark">${watermarkText ? esc(watermarkText) : ''}</div>
-      ${pageHeaderHtml('1 of 2')}
+      ${pageHeaderHtml(page1Label)}
+      <div class="pr-analysis-id"><b>${esc(analysisName)}</b>${beamId !== '—' ? ' · '+esc(beamId) : ''}</div>
       ${unstableHtml}
 
       <div class="pr-section-title">1. Beam schematic</div>
@@ -3164,7 +3172,7 @@ function buildPrintReport(R){
       </table>
 
       ${codeCheckOnPage2 ? '' : codeCheckHtml}
-      ${codeCheckOnPage2 ? '<div class="pr-page-break"></div>' + pageHeaderHtml('2 of 2') + codeCheckHtml : '<div class="pr-page-break"></div>' + pageHeaderHtml('2 of 2')}
+      ${codeCheckOnPage2 ? '<div class="pr-page-break"></div>' + pageHeaderHtml(page2Label) + '<div class="pr-analysis-id"><b>'+esc(analysisName)+'</b>'+ (beamId !== '—' ? ' · '+esc(beamId) : '') +'</div>' + codeCheckHtml : '<div class="pr-page-break"></div>' + pageHeaderHtml(page2Label) + '<div class="pr-analysis-id"><b>'+esc(analysisName)+'</b>'+ (beamId !== '—' ? ' · '+esc(beamId) : '') +'</div>'
 
       <div class="pr-section-title">7. Shear, moment and deflection diagrams</div>
       <div class="pr-diagrams">
@@ -3196,9 +3204,85 @@ function buildPrintReport(R){
   drawSeries('printDefl', R.deflSamples.map(d=>({x:d.x,y:d.defl_mm})), 'mm', '#5FCB8D', false, true, {forceWidth:pageW, forceScale:2.5, forceHeight:160}, undefined, false, printDeflLimits);
 }
 
+function collectAllAnalysisResults(){
+  syncCurrentAnalysisToStore();
+  const originalIndex = currentAnalysisIndex;
+  const collected = [];
+  for (let i=0; i<analyses.length; i++){
+    loadAnalysisToDom(i);
+    suppressAutosaveOnce = true;
+    runAnalysis();
+    if (lastResults){
+      collected.push({
+        R: deepClone(lastResults),
+        meta:{
+          analysisName:analyses[i].name || ('Analysis '+(i+1)),
+          beamId:analyses[i].beamId || ('B-'+(i+1)),
+          sectionName:analyses[i].sectionName || '',
+          analysisIndex:i
+        }
+      });
+    }
+  }
+  loadAnalysisToDom(originalIndex);
+  suppressAutosaveOnce = true;
+  runAnalysis();
+  return collected;
+}
+
+function buildPrintReport(allResults){
+  if (!Array.isArray(allResults)) allResults = allResults ? [{R:allResults,meta:{}}] : [];
+  const finalRoot = document.getElementById('printReport');
+  if (!finalRoot || !allResults.length) return;
+  finalRoot.innerHTML = '';
+  const totalPages = allResults.length * 2;
+  const fragments = [];
+
+  for (let i=0; i<allResults.length; i++){
+    const item = allResults[i];
+    const scratch = document.createElement('div');
+    scratch.id = 'printReport';
+    scratch.style.position='fixed';
+    scratch.style.left='-100000px';
+    scratch.style.top='0';
+    scratch.style.width='800px';
+    scratch.style.visibility='hidden';
+    document.body.appendChild(scratch);
+
+    const meta = Object.assign({}, item.meta, {
+      page1Label:(i*2+1)+' of '+totalPages,
+      page2Label:(i*2+2)+' of '+totalPages
+    });
+
+    const finalId = finalRoot.id;
+    finalRoot.id='printReportFinal';
+    buildPrintReportSingle(item.R, meta);
+
+    scratch.querySelectorAll('canvas').forEach(cv=>{
+      try{
+        const img=document.createElement('img');
+        const w=cv.clientWidth || 680;
+        const h=cv.clientHeight || parseInt(cv.getAttribute('height')||'160',10);
+        img.src=cv.toDataURL('image/png');
+        img.width=w; img.height=h;
+        img.style.width=w+'px'; img.style.height=h+'px';
+        cv.replaceWith(img);
+      }catch(err){ console.error('PDF canvas conversion failed', err); }
+    });
+
+    fragments.push(scratch.innerHTML);
+    scratch.remove();
+    finalRoot.id=finalId;
+  }
+
+  finalRoot.innerHTML = fragments.join('<div class="pr-page-break"></div>');
+}
+
 document.getElementById('reportBtn').addEventListener('click', ()=>{
-  if (!lastResults){ alert('Run the analysis first.'); return; }
-  buildPrintReport(lastResults);
+  syncProjectDetailsFromDom();
+  const allResults = collectAllAnalysisResults();
+  if (!allResults.length){ alert('Run at least one valid analysis first.'); return; }
+  buildPrintReport(allResults);
   setTimeout(()=> window.print(), 80);
 });
 
