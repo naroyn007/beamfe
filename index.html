@@ -2171,9 +2171,10 @@ function renderResults(R, afterDraw){
     <div class="panel">
       <div class="panel-head">Reactions &amp; Support Comparison</div>
       <div class="panel-body" style="padding-top:4px;">
+        ${R.primaryBeam ? `<div class="field-note" style="margin-bottom:6px;"><b>Primary Beam — Equipment Leg Check:</b> bearing reactions are transferred directly to the proprietary equipment legs. Leg capacity: <b>${R.legCapacity>0 ? fmt(R.legCapacity,2)+' kN' : 'not entered'}</b>.</div>` : ''}
         <table>
-          <thead><tr><th>Support</th><th>Position (m)</th><th>Type</th><th>Reaction (kN)</th><th>Direction</th><th>Status</th></tr></thead>
-          <tbody>${reactionRows(R.reactions)}</tbody>
+          <thead><tr><th>Support</th><th>Position (m)</th><th>Type</th><th>Reaction (kN)</th><th>Direction</th>${R.primaryBeam ? '<th>Leg Capacity</th><th>Utilization</th>' : ''}<th>Status</th></tr></thead>
+          <tbody>${reactionRows(R.reactions, R.primaryBeam, R.legCapacity)}</tbody>
         </table>
       </div>
     </div>
