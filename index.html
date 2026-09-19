@@ -387,13 +387,6 @@
   }
   .pr-section-title:first-of-type{margin-top:0;}
   .pr-table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:4px;}
-  /* Model Summary headers stay on one line even when the model has many supports/loads. */
-  .pr-model-summary{table-layout:fixed;}
-  .pr-model-summary thead th{white-space:nowrap;font-size:9px;}
-  .pr-model-summary thead th:nth-child(1){width:18%;}
-  .pr-model-summary thead th:nth-child(2){width:27%;}
-  .pr-model-summary thead th:nth-child(3){width:37%;}
-  .pr-model-summary thead th:nth-child(4){width:18%;}
   /* Excel-style table headers: the whole header cell is filled, not just the text area. */
   /* Excel-style table headers: darker maroon fill with inverted white text. */
   .pr-table thead th{
@@ -3417,12 +3410,6 @@ function buildPrintReportSingle(R, meta){
   const propI = String(meta.propI ?? document.getElementById('propI').value ?? '');
   const dateDisplay = dateVal ? new Date(dateVal+'T00:00:00').toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}) : '—';
 
-  const supSummary = R.supports.map((s,i)=>'S'+(i+1)+' '+(s.type==='tie'?'tie-down':'free')+' @ '+fmt(s.pos,2)+'m').join(', ');
-  const loadSummary = [
-    R.pointLoads.length ? R.pointLoads.length+' point load'+(R.pointLoads.length>1?'s':'') : null,
-    R.udls.length ? R.udls.length+' distributed load'+(R.udls.length>1?'s':'') : null
-  ].filter(Boolean).join(' + ') || 'none';
-
   const sectionName = String(meta.sectionName || document.getElementById('sectionName').value.trim() || '—').trim() || '—';
 
   const root = document.getElementById('printReport');
@@ -3492,11 +3479,11 @@ function buildPrintReportSingle(R, meta){
   const printItemCount = R.supports.length + R.pointLoads.length + R.udls.length;
   const densePrint = printItemCount >= 12;
   const ultraDensePrint = printItemCount >= 18;
-  // Keep the report to exactly two pages. When page 1 is too dense, move Section 6
+  // Keep the report to exactly two pages. When page 1 is too dense, move Section 5
   // to page 2 so it stays with the diagrams instead of creating a third page.
   const codeCheckOnPage2 = R.supports.length >= 6 || R.supports.length + R.pointLoads.length + R.udls.length >= 10;
   const codeCheckHtml = `
-      <div class="pr-section-title">6. Code check summary</div>
+      <div class="pr-section-title">5. Code check summary</div>
       <table class="pr-table pr-code-summary">
         <thead><tr><th>Check</th><th>Demand</th><th>Capacity</th><th>Ratio</th><th>Status</th></tr></thead>
         <tbody>${buildCodeCheckRows(R).map(row=>`
@@ -3513,18 +3500,7 @@ function buildPrintReportSingle(R, meta){
       <div class="pr-section-title">1. Beam schematic</div>
       <canvas id="printSchematic" height="170"></canvas>
 
-      <div class="pr-section-title pr-compact-no-rule">2. Model summary</div>
-      <table class="pr-table pr-model-summary">
-        <thead><tr><th>Span length</th><th>Supports</th><th>Loads (combined case)</th><th>Tributary width</th></tr></thead>
-        <tbody><tr>
-          <td>${fmt(R.L,2)} m</td>
-          <td>${esc(supSummary)}</td>
-          <td>${esc(loadSummary)}</td>
-          <td>${udlModeGlobal==='area' ? fmt(R.trib,2)+' m' : '—'}</td>
-        </tr></tbody>
-      </table>
-
-      <div class="pr-section-title">3. Section properties</div>
+      <div class="pr-section-title">2. Section properties</div>
       <table class="pr-table">
         <thead><tr><th>Section</th><th>E</th><th>I</th><th>Allow. Sag M</th><th>Allow. Hog M</th><th>Allow. Shear</th><th>Defl. limit</th></tr></thead>
         <tbody><tr>
@@ -3538,7 +3514,7 @@ function buildPrintReportSingle(R, meta){
         </tr></tbody>
       </table>
 
-      <div class="pr-section-title pr-compact-no-rule">4. Loadings</div>
+      <div class="pr-section-title pr-compact-no-rule">3. Loadings</div>
       <table class="pr-table">
         <thead><tr><th>Point load</th><th>Position</th><th>Magnitude</th></tr></thead>
         <tbody>${R.pointLoads.length ? R.pointLoads.map((p,i)=>`
@@ -3546,18 +3522,19 @@ function buildPrintReportSingle(R, meta){
         `).join('') : '<tr><td colspan="3" style="color:#9ca3af;">None</td></tr>'}</tbody>
       </table>
       <table class="pr-table" style="margin-top:10px;">
-        <thead><tr><th>Distributed load</th><th>Start</th><th>End</th><th>Type</th><th>Mag. @ start</th><th>Mag. @ end</th><th>Profile</th></tr></thead>
+        <thead><tr><th>Distributed load</th><th>Start</th><th>End</th><th>Mag. @ start</th><th>Mag. @ end</th><th>Profile</th><th>Trib. Width (m)</th></tr></thead>
         <tbody>${R.udls.length ? R.udls.map((u,i)=>{
           const uniform = u.magStart===u.magEnd;
           const profile = uniform ? 'Uniform' : ((u.magStart===0||u.magEnd===0) ? 'Triangular' : 'Trapezoidal');
           const unit = u.mode==='area' ? 'kN/m\u00b2' : 'kN/m';
+          const tribForRow = u.mode==='area' ? R.trib : 1;
           return `<tr><td>W${i+1}</td><td>${fmt(u.start,2)} m</td><td>${fmt(u.end,2)} m</td>
-            <td>${u.mode==='area'?'Area (\u00d7 trib.)':'Line'}</td>
-            <td>${fmt(u.magStart,2)} ${unit}</td><td>${fmt(u.magEnd,2)} ${unit}</td><td>${profile}</td></tr>`;
+            <td>${fmt(u.magStart,2)} ${unit}</td><td>${fmt(u.magEnd,2)} ${unit}</td><td>${profile}</td>
+            <td>${fmt(tribForRow,2)}</td></tr>`;
         }).join('') : '<tr><td colspan="7" style="color:#9ca3af;">None</td></tr>'}</tbody>
       </table>
 
-      <div class="pr-section-title">5. Reactions</div>
+      <div class="pr-section-title">4. Reactions</div>
       <table class="pr-table">
         <thead><tr><th>Support</th><th>Position</th><th>Type</th><th>Reaction</th><th>Status</th></tr></thead>
         <tbody>${R.reactions.map((r,i)=>{
@@ -3584,7 +3561,7 @@ function buildPrintReportSingle(R, meta){
       <div class="pr-body">
       ${codeCheckOnPage2 ? pageHeaderHtml(page2Label) + codeCheckHtml : pageHeaderHtml(page2Label)}
 
-      <div class="pr-section-title">7. Shear, moment and deflection diagrams</div>
+      <div class="pr-section-title">6. Shear, moment and deflection diagrams</div>
       <div class="pr-diagrams">
         <div><canvas id="printShear" height="150"></canvas><div class="pr-diagram-cap">Shear (V) — max ${fmt(R.Vabs,2)} kN at x = ${fmt(R.VabsAtX,2)} m</div></div>
         <div><canvas id="printMoment" height="150"></canvas><div class="pr-diagram-cap">Moment (M) — max ${fmt(R.Mabs,2)} kN·m at x = ${fmt(R.MabsAtX,2)} m</div></div>
