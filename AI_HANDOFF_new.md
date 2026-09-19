@@ -258,6 +258,8 @@ Implemented in `development`:
 - Each analysis retains the existing two-sheet report structure; page numbering is calculated across the complete consolidated report.
 - PDF section-property values are bound to the correct analysis rather than the currently visible UI analysis.
 - Invalid analyses are reported and excluded from the consolidated PDF instead of inheriting a previous analysis result.
+- **PDF pagination regression fixed:** the standalone Analysis Name row was adding vertical height and could cause Section 6 to jump unexpectedly. Analysis Name is now included inside the existing report header, preserving the intended two-sheet layout.
+- Full JavaScript syntax check passes after the fix.
 
 **Testing focus:**
 - Create Analysis 1 and Analysis 2 under the same project; change supports/loads independently and switch back and forth.
