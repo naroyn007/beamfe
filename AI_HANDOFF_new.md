@@ -278,3 +278,44 @@ Before production promotion, the new **per-opening Disclaimer Acceptance Gate** 
 
 
 Promote the tested `development` branch to production/`main` when ready. Do not make additional changes to `main` as part of this milestone.
+
+---
+
+## Next Development Task — PDF Company Branding (Logo + Company Info)
+
+**Status: Planned, not yet implemented.** This is scoped to `index.html`'s PDF report generation (`buildPrintReportSingle` / `buildPrintReport`), separate from the SSO work above. Treat this section as the roadmap for that task.
+
+### Requirements
+
+- **Company logo** — user-selectable, positioned at the top-right of the PDF header.
+- **Company details** — positioned to the left of the logo:
+  - Company Name
+  - Company Address
+  - Optional Company Description / additional information
+- Logo must handle different aspect ratios without distorting.
+- If no logo is selected, the report should still look clean.
+- **Page number** centered in the bottom footer.
+- **Date** moved to the bottom-left footer.
+- Keep the existing report title and analysis identification.
+- Apply the company identity consistently across all report pages and multiple analyses.
+
+Backend: company logo stored in **Supabase Storage**, with the company information/logo reference stored separately so it can be loaded when generating the BEAM//FE PDF. Not yet implemented.
+
+### Current relevant code (as of this session)
+
+- `pageHeaderHtml(sheetLabel)` (inside `buildPrintReportSingle`) builds `.pr-titleblock` (title + analysis name, left) and `.pr-meta` (Sheet X of Y + Date, currently top-right). This is called once per printed sheet/page, for every analysis, so it's already the correct place to add the company info + logo block — it will apply consistently across all pages and analyses with no extra plumbing.
+- `.pr-footer` currently only renders the static boilerplate disclaimer text, centered. No page number or date currently live in the footer.
+- `page1Label` / `page2Label` (built in `buildPrintReport(allResults)`) already compute the true document-wide page number as `"(i*2+1) of totalPages"` / `"(i*2+2) of totalPages"` across all analyses in the consolidated PDF — this is exactly the value to move into the centered footer. No new page-counting logic needed.
+- `dateDisplay` is computed once per report build from the single project-level date field (`projectDetails.date`), so it's already consistent across every page — safe to move as-is into the footer.
+- Chart images are already baked into the PDF via `canvas.toDataURL('image/png')` before `window.print()` (see the `scratch.querySelectorAll('canvas')` loop in `buildPrintReport`), specifically to avoid print-rendering issues. The logo should follow the same pattern — fetch once from Supabase Storage, convert to a data URI, and inject that, rather than pointing an `<img>` at a live Storage URL at print time.
+
+### Implementation notes / open decisions
+
+1. **Logo scaling** — fixed-height container (~40–50px tall, max-width ~160px) with `object-fit:contain`. Do not stretch to fill a fixed box; must not distort regardless of source aspect ratio (wide wordmark vs. square icon vs. tall logo).
+2. **Header layout** — `.pr-meta` (currently holding Sheet X + Date, top-right) empties out once both move to the footer; that's where the logo slot goes. Likely two stacked rows: new top row = [Company info left | Logo right], existing title block row unchanged below it.
+3. **Footer needs 3 zones, not 1** — currently `.pr-footer` is a single centered disclaimer block. Needs: disclaimer text (its own row, as now) + a second row with Date (left) and Page N of Y (center).
+4. **No-logo fallback** — when no logo is set, the company-info text column should expand or the row should collapse cleanly, not leave a dead empty box on the right.
+5. **Scope decision needed before backend work starts**: is this a single fixed "ROI Engineering" branding, or per-customer (each BEAM//FE licensee uploads their own company's logo/info)? "User-selectable" + a Supabase-backed reference strongly implies **per-customer**, keyed by user/license — this should be confirmed explicitly, since it determines whether the company profile row is global or keyed to `auth.uid()` / license, and where it's edited (a settings/account section, not a global config).
+6. Supabase Storage bucket policy needs deciding — recommend private bucket with authenticated/signed access fetched client-side (mirroring the existing canvas→dataURL pattern above), not a fully public bucket, since this is per-customer branding tied to a paid license.
+
+Do not start backend/Storage work until the scope decision in point 5 is confirmed.
