@@ -240,6 +240,29 @@ All magnitude-type drags (`udl-mag`, `udl-scale`, `pointload-mag`) share the sam
 - **Number inputs auto-select on focus** app-wide (`document.addEventListener('focus', ..., true)` + deferred `.select()` to survive Chrome's click-collapses-selection quirk) — typing immediately overwrites instead of requiring backspace first.
 - **Login screen bug fixed**: `input[type=password]` and `input[type=date]` were never included in either CSS input rule (`input[type=number], input[type=text], select{...}` and the `.license-box`-specific one) — password field rendered as an unstyled browser default, visually mismatched from the email field above it. Both now included in both rules.
 
-### Outstanding / known issues
+### Current Project Milestone — PDF Report + Corporate Styling (2026-09-19)
 
-- **GitHub connector lacks write access to this repo** (`403 Resource not accessible by integration` on `PUT contents/index.html`, read access is fine). All of the above has only been pushed via generated-file download, not committed through the connector — confirm the actual `main` branch has these changes before assuming they're live. If retrying via the connector, check the GitHub App / OAuth integration's repo permissions include "Contents: Read and write."
+**Status: Development testing**
+
+Completed in `development`:
+- UDL top-line drag corrected so it changes only UDL magnitude and does not modify point-load magnitude.
+- PDF report refined to target a strict **2-page maximum**.
+- Section 6 (Code Check Summary) now moves to page 2 with Section 7 when the model becomes too dense, instead of allowing a third page.
+- Page 2 diagrams restored to a larger, more useful size after earlier over-compression.
+- PDF table column headers use full-cell maroon fills with white text.
+- Model Summary headers are forced to one line, including larger support counts such as 7 supports.
+- PDF report title rule uses the same maroon accent.
+- Added a **PDF Accent Color** picker on the development UI. It affects PDF export only and automatically selects black/white header text for contrast.
+- Normal engineering diagram colors remain separate from the PDF branding accent.
+
+Current behavior / test focus:
+- `main` is not being changed as part of this PDF/UI development work.
+- Test PDF export with 6–10 supports and multiple point/UDL loadings.
+- Confirm Section 6 stays on page 1 for smaller models and moves cleanly to page 2 for dense models, while the complete report remains 2 pages.
+- Confirm the selected PDF Accent Color appears as the full table-header fill and title rule in the printed/PDF output.
+- Confirm Model Summary column headers remain one line.
+
+Next milestone after this test:
+- Finalize the PDF corporate color behavior and promote the tested `development` changes to `main` only after visual verification.
+
+**Repository write status:** GitHub connector writes to `development` are currently working (latest tested commit flow succeeds).
