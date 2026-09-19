@@ -2342,7 +2342,10 @@ function drawSchematic(R, canvasId, printMode, canvasOpts){
 
     ctx.fillStyle = hl ? TT.labelText : ((liftedOff || uplift) ? T.liftedStroke : T.labelText);
     ctx.font='10px IBM Plex Mono';
-    const labelText = liftedOff ? 'LIFTED @'+fmt(s.pos,1)+'m' : uplift ? 'FREE ⚠ @'+fmt(s.pos,1)+'m' : (s.type==='free'?'FREE':'TIE')+' @'+fmt(s.pos,1)+'m';
+   const labelText = liftedOff ? 'LIFTED @'+fmt(s.pos,1)+'m'
+  : s.type==='tie' ? 'TIE @'+fmt(s.pos,1)+'m'
+  : uplift ? 'FREE ⚠ @'+fmt(s.pos,1)+'m'
+  : 'FREE @'+fmt(s.pos,1)+'m';
     ctx.fillText(labelText, x-24, baseY+38);
     if (hl) ctx.restore();
     if (!printMode) hitRegions.push({type:'support', index:i, x1:x-16, y1:baseY-2, x2:x+16, y2:baseY+42});
