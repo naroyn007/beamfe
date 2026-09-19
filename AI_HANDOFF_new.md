@@ -260,6 +260,7 @@ Implemented in `development`:
 - Invalid analyses are reported and excluded from the consolidated PDF instead of inheriting a previous analysis result.
 - **PDF pagination regression fixed:** the standalone Analysis Name row was adding vertical height and could cause Section 6 to jump unexpectedly. Analysis Name is now included inside the existing report header, preserving the intended two-sheet layout.
 - Full JavaScript syntax check passes after the fix.
+- **PDF sheet-structure fix:** each analysis is now split into two real `.pr-page` containers (page 1 and page 2), with explicit page breaks between sheets and between analyses. This prevents the browser from treating an entire analysis as one flowing container and creating an unintended third sheet.
 
 **Testing focus:**
 - Create Analysis 1 and Analysis 2 under the same project; change supports/loads independently and switch back and forth.
