@@ -42,6 +42,17 @@
     border-bottom:2px solid var(--blue-line-dim);
     padding-bottom:14px;margin-bottom:22px;flex-wrap:wrap;gap:10px;
   }
+  .account-bar{
+    display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;
+    margin-top:8px;font-size:10.5px;letter-spacing:.7px;text-transform:uppercase;
+  }
+  .account-bar .status{color:var(--green);}
+  .account-bar .email{color:var(--blue-line);text-transform:none;letter-spacing:0;}
+  .account-bar a,.account-bar button{
+    color:var(--cyan);background:none;border:none;padding:0;font:inherit;cursor:pointer;text-decoration:none;
+  }
+  .account-bar a:hover,.account-bar button:hover{color:var(--paper);text-decoration:underline;}
+  .account-bar .sep{color:var(--blue-line-dim);}
   .brand{display:flex;align-items:baseline;gap:12px;}
   .brand-mark{
     font-family:var(--head);font-weight:700;font-size:34px;letter-spacing:2px;
@@ -447,7 +458,16 @@
       <div class="brand-mark">BEAM<span>//</span>FE</div>
       <div class="brand-sub">Finite&nbsp;Element&nbsp;Beam&nbsp;Analysis</div>
     </div>
-    <div class="rev">SHEET 01 &nbsp;·&nbsp; UNITS <b>METRIC (m / kN / mm / MPa)</b><br>Multi-span &middot; point &amp; distributed loads &middot; tie-down uplift check</div>
+    <div>
+      <div class="rev">SHEET 01 &nbsp;·&nbsp; UNITS <b>METRIC (m / kN / mm / MPa)</b><br>Multi-span &middot; point &amp; distributed loads &middot; tie-down uplift check</div>
+      <div class="account-bar" id="accountBar">
+        <span class="status" id="authBarStatus">LICENSE • TRIAL</span>
+        <span class="email" id="authBarEmail"></span>
+        <a href="https://hub.roi-engg.com" id="hubLink">Platform Hub</a>
+        <span class="sep">|</span>
+        <button type="button" id="logoutBtn">Logout</button>
+      </div>
+    </div>
   </header>
 
   <div id="autosaveBanner"></div>
@@ -703,15 +723,26 @@ function hideLicenseGate(){
 
 function renderLicenseFooter(){
   const el = document.getElementById('licenseFooter');
+  const statusEl = document.getElementById('authBarStatus');
+  const emailEl = document.getElementById('authBarEmail');
+  const logoutEl = document.getElementById('logoutBtn');
   if (!el) return;
-  if (!currentLicense || !currentUserEmail){ el.innerHTML=''; return; }
-  const planTag = currentLicense.license_type === 'trial' ? ' <span style="color:var(--amber);">(Trial)</span>' : '';
-  el.innerHTML =
-    '<span style="color:var(--cyan);font-weight:600;">BEAM//FE • LICENSE ACTIVE</span>' +
-    ' &middot; <b>'+esc(currentUserEmail)+'</b>' + planTag +
-    ' &middot; <a href="'+HUB_URL+'">Platform Hub</a>' +
-    ' &middot; <a id="upgradeLicenseLink">Enter license key</a>' +
-    ' &middot; <a id="licenseSignOut">Sign out</a>';
+  if (!currentLicense || !currentUserEmail){
+    el.innerHTML='';
+    if (statusEl) statusEl.textContent='LICENSE • SIGN IN';
+    if (emailEl) emailEl.textContent='';
+    if (logoutEl) logoutEl.style.display='none';
+    return;
+  }
+  const isTrial = currentLicense.license_type === 'trial';
+  if (statusEl) statusEl.textContent = isTrial ? 'LICENSE • TRIAL' : 'LICENSE • PAID';
+  if (emailEl) emailEl.textContent = currentUserEmail;
+  if (logoutEl){
+    logoutEl.style.display='';
+    logoutEl.onclick = doSignOut;
+  }
+  const planTag = isTrial ? ' <span style="color:var(--amber);">(Trial)</span>' : '';
+  el.innerHTML = 'Signed in as: <b>'+esc(currentUserEmail)+'</b>'+planTag+' &middot; <a id="upgradeLicenseLink">Enter license key</a> &middot; <a id="licenseSignOut">Sign out</a>';
   const so = document.getElementById('licenseSignOut');
   if (so) so.addEventListener('click', doSignOut);
   const up = document.getElementById('upgradeLicenseLink');
