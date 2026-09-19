@@ -350,18 +350,19 @@
   /* Company branding: company details + logo, inline on the same row as the report
      title (not a separate row) — details first, logo to its right. Only rendered
      at all when at least one branding field is set (see pageHeaderHtml JS). */
-  .pr-brand-inline{display:flex;align-items:stretch;gap:14px;flex:0 0 auto;margin-left:auto;}
+  .pr-brand-inline{display:flex;align-items:center;gap:14px;flex:0 0 auto;margin-left:auto;}
   .pr-brand-info{font-size:10.5px;color:#6b7280;line-height:1.45;text-align:right;}
   .pr-brand-name{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:13.5px;font-weight:700;
     letter-spacing:0.3px;color:#111827;text-transform:uppercase;}
   .pr-brand-address{color:#6b7280;white-space:pre-line;}
   .pr-brand-desc{color:#6b7280;font-style:italic;}
-  /* align-items:stretch above means this box's height always equals the info block's
-     actual rendered height (typically ~4 lines: name + a multi-line address, sometimes
-     + description) rather than a fixed guess — object-fit:contain then lets the logo
-     scale to fill exactly that height, at any aspect ratio, without distortion. */
-  .pr-brand-logo{flex:0 0 auto;max-width:210px;max-height:90px;display:flex;align-items:center;}
-  .pr-brand-logo img{max-height:100%;max-width:210px;width:auto;height:auto;object-fit:contain;}
+  /* The logo container follows the uploaded image's intrinsic dimensions/aspect ratio.
+     It is only constrained by the report's maximum logo size, so square, wide, and
+     tall uploads keep their natural proportions without being stretched to the
+     company-info height. align-self:center prevents the flex row from stretching it. */
+  .pr-brand-logo{flex:0 0 auto;align-self:center;width:max-content;height:max-content;
+    max-width:210px;max-height:90px;display:flex;align-items:center;justify-content:flex-end;}
+  .pr-brand-logo img{display:block;width:auto;height:auto;max-width:210px;max-height:90px;object-fit:contain;}
   /* Footer: disclaimer text on its own line, then a 3-column row so the page number
      sits truly centered on the sheet regardless of how long the date text is (two
      empty/text side columns of equal width keep the center column centered). */
