@@ -2340,8 +2340,8 @@ function drawSchematic(R, canvasId, printMode, canvasOpts){
       ctx.setLineDash([]);
     }
 
-    ctx.fillStyle = hl ? TT.labelText : ((liftedOff || uplift) ? T.liftedStroke : T.labelText);
-    ctx.font='10px IBM Plex Mono';
+ctx.fillStyle = hl ? TT.labelText : ((liftedOff || (uplift && s.type!=='tie')) ? T.liftedStroke : T.labelText);
+ctx.font='10px IBM Plex Mono';
    const labelText = liftedOff ? 'LIFTED @'+fmt(s.pos,1)+'m'
   : s.type==='tie' ? 'TIE @'+fmt(s.pos,1)+'m'
   : uplift ? 'FREE ⚠ @'+fmt(s.pos,1)+'m'
