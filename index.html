@@ -363,8 +363,13 @@
   .pr-tag-pass{background:#dcfce7;color:#166534;}
   .pr-tag-fail{background:#fee2e2;color:#991b1b;}
   .pr-tag-warn{background:#fef3c7;color:#92400e;}
-  .pr-diagrams{display:flex;flex-direction:column;gap:14px;margin-bottom:6px;}
-  .pr-diagram-cap{font-size:10px;color:#6b7280;text-align:center;margin-top:2px;}
+  .pr-diagrams{display:flex;flex-direction:column;gap:8px;margin-bottom:4px;}
+  /* Page 2 is intentionally compact so Sections 6–7 stay on the same sheet. */
+  .pr-page .pr-page-break + .pr-titleblock{margin-bottom:9px;padding-bottom:8px;}
+  .pr-page .pr-page-break + .pr-titleblock + .pr-infogrid{margin-bottom:8px;font-size:10px;}
+  .pr-page .pr-page-break + .pr-titleblock + .pr-infogrid + .pr-section-title{margin-top:6px;margin-bottom:4px;}
+  .pr-page .pr-page-break + .pr-titleblock ~ .pr-footer{margin-top:10px;padding-top:6px;font-size:8.5px;line-height:1.35;}
+  .pr-diagram-cap{font-size:9px;color:#6b7280;text-align:center;margin-top:1px;}
   .pr-footer{border-top:1px solid #d1d5db;padding-top:10px;margin-top:26px;font-size:9.5px;color:#9ca3af;line-height:1.6;}
   .pr-unstable{border:1.5px solid #991b1b;background:#fef2f2;border-radius:3px;padding:10px 14px;margin-bottom:16px;}
   .pr-unstable-title{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-weight:700;letter-spacing:1px;
@@ -2558,7 +2563,8 @@ function renderTableBody(cat){
 
 /* ---- Canvas: generic V/M/Defl series ---- */
 function drawSeries(id, points, unit, color, fillFromZero, printMode, canvasOpts, hoverX, invertY, limitLines){
-  const {ctx,w,h} = setupCanvas(id, 180, canvasOpts);
+  const drawHeight = canvasOpts && canvasOpts.forceHeight ? canvasOpts.forceHeight : 180;
+  const {ctx,w,h} = setupCanvas(id, drawHeight, canvasOpts);
   ctx.clearRect(0,0,w,h);
   const padL=60, padR=20, padT=14, padB=22;
   const plotW = w-padL-padR, plotH = h-padT-padB;
@@ -2950,11 +2956,11 @@ function buildPrintReport(R){
   const printMomentLimits = computeSidedLimitLines(R.diag.map(d=>d.M), R.FbSag, R.FbHog,
     cap=>'Allow. Sag M = '+fmt(cap,2)+' kN\u00b7m', cap=>'Allow. Hog M = '+fmt(cap,2)+' kN\u00b7m');
   drawSchematic(R, 'printSchematic', true, printSchematicLimits);
-  drawSeries('printShear', R.diag.map(d=>({x:d.x,y:d.V})), 'kN', '#6FD6E8', false, true, {forceWidth:pageW, forceScale:2.5}, undefined, false, printShearLimits);
-  drawSeries('printMoment', R.diag.map(d=>({x:d.x,y:d.M})), 'kN·m', '#F2A93B', true, true, {forceWidth:pageW, forceScale:2.5}, undefined, true, printMomentLimits);
+  drawSeries('printShear', R.diag.map(d=>({x:d.x,y:d.V})), 'kN', '#6FD6E8', false, true, {forceWidth:pageW, forceScale:2.5, forceHeight:120}, undefined, false, printShearLimits);
+  drawSeries('printMoment', R.diag.map(d=>({x:d.x,y:d.M})), 'kN·m', '#F2A93B', true, true, {forceWidth:pageW, forceScale:2.5, forceHeight:120}, undefined, true, printMomentLimits);
   const printDeflLimits = computeSidedLimitLines(R.deflSamples.map(d=>d.defl_mm), R.deflAllowIn, R.deflAllowIn,
     cap=>'Defl. Limit = '+fmt(cap,1)+' mm (L/'+fmt(R.deflDenom,0)+')', cap=>'Defl. Limit = \u2212'+fmt(cap,1)+' mm (L/'+fmt(R.deflDenom,0)+')');
-  drawSeries('printDefl', R.deflSamples.map(d=>({x:d.x,y:d.defl_mm})), 'mm', '#5FCB8D', false, true, {forceWidth:pageW, forceScale:2.5}, undefined, false, printDeflLimits);
+  drawSeries('printDefl', R.deflSamples.map(d=>({x:d.x,y:d.defl_mm})), 'mm', '#5FCB8D', false, true, {forceWidth:pageW, forceScale:2.5, forceHeight:120}, undefined, false, printDeflLimits);
 }
 
 document.getElementById('reportBtn').addEventListener('click', ()=>{
