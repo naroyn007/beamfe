@@ -3169,7 +3169,7 @@ function buildPrintReportSingle(R, meta){
       </table>
 
       ${codeCheckOnPage2 ? '' : codeCheckHtml}
-      ${codeCheckOnPage2 ? '<div class="pr-page-break"></div>' + pageHeaderHtml(page2Label) + '<div class="pr-analysis-id"><b>'+esc(analysisName)+'</b>'+ (beamId !== '—' ? ' · '+esc(beamId) : '') +'</div>' + codeCheckHtml : '<div class="pr-page-break"></div>' + pageHeaderHtml(page2Label) + '<div class="pr-analysis-id"><b>'+esc(analysisName)+'</b>'+ (beamId !== '—' ? ' · '+esc(beamId) : '') +'</div>'}
+      ${codeCheckOnPage2 ? '<div class="pr-page-break"></div>' + pageHeaderHtml(page2Label) + codeCheckHtml : '<div class="pr-page-break"></div>' + pageHeaderHtml(page2Label)}
 
       <div class="pr-section-title">7. Shear, moment and deflection diagrams</div>
       <div class="pr-diagrams">
