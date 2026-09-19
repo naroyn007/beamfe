@@ -2962,10 +2962,6 @@ const analysisSelectEl = document.getElementById('analysisSelect');
 const addAnalysisBtnEl = document.getElementById('addAnalysisBtn');
 if (analysisSelectEl) analysisSelectEl.addEventListener('change', e=>switchAnalysis(e.target.value));
 if (addAnalysisBtnEl) addAnalysisBtnEl.addEventListener('click', addNewAnalysis);
-['prjName','prjBy','prjChecked','prjDate','analysisName','prjBeamId'].forEach(id=>{
-  const el=document.getElementById(id);
-  if (el) el.addEventListener('input', ()=>{ if(analyses.length) syncCurrentAnalysisToStore(); });
-});
 document.getElementById('runBtn').addEventListener('click', runAnalysis);
 window.addEventListener('resize', ()=>{ if(document.getElementById('cvShear')) runAnalysis(); });
 
@@ -3324,6 +3320,8 @@ function serializeModel(){
     beamLength:active?.beamLength ?? beamLengthValue,
     tribWidth:active?.tribWidth ?? tribWidthValue,
     udlModeGlobal:active?.udlModeGlobal ?? udlModeGlobal,
+    analysisName:active?.name ?? 'Analysis 1',
+    beamId:active?.beamId ?? 'B-1',
     sectionName:active?.sectionName ?? document.getElementById('sectionName')?.value ?? '',
     propE:active?.propE ?? document.getElementById('propE')?.value ?? '',
     propI:active?.propI ?? document.getElementById('propI')?.value ?? '',
