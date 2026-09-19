@@ -2922,9 +2922,6 @@ function buildPrintReport(R){
         }).join('')}</tbody>
       </table>
 
-      <div class="pr-page-break"></div>
-      ${pageHeaderHtml('2 of 2')}
-
       <div class="pr-section-title">6. Code check summary</div>
       <table class="pr-table pr-code-summary">
         <thead><tr><th>Check</th><th>Demand</th><th>Capacity</th><th>Ratio</th><th>Status</th></tr></thead>
@@ -2932,6 +2929,9 @@ function buildPrintReport(R){
           <tr><td>${esc(row.check)}</td><td>${row.demand}</td><td>${row.capacity}</td><td>${row.ratio}</td><td>${prTag(row.pass)}</td></tr>
         `).join('')}</tbody>
       </table>
+
+      <div class="pr-page-break"></div>
+      ${pageHeaderHtml('2 of 2')}
 
       <div class="pr-section-title">7. Shear, moment and deflection diagrams</div>
       <div class="pr-diagrams">
