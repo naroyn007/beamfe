@@ -1986,6 +1986,8 @@ function runAnalysis(afterDraw){
   const FbHog = parseFloat(document.getElementById('allowFbHog').value)||0; // allowable HOGGING moment capacity, kN·m
   const Fv = parseFloat(document.getElementById('allowFv').value)||0; // allowable shear FORCE capacity, kN
   const deflDenom = parseFloat(document.getElementById('deflLimit').value)||300;
+  const primaryBeam = !!document.getElementById('primaryBeamToggle')?.checked;
+  const legCapacity = parseFloat(document.getElementById('legCapacity')?.value)||0;
 
   const results = document.getElementById('results');
 
@@ -2086,6 +2088,7 @@ function runAnalysis(afterDraw){
     Msag, MsagAtX, FbSag, bendingSagPass,
     Mhog, MhogAtX, FbHog, bendingHogPass,
     bendingPass,
+    primaryBeam, legCapacity,
     fv, Fv, shearPass,
     deflAllowIn, deflDenom, deflPass, deflRatioActual, wasAdjusted,
     unstableSupports
@@ -2304,7 +2307,7 @@ function summaryCell(label, sym, val, unit, sub, pass){
   </div>`;
 }
 
-function reactionRows(reactions){
+function reactionRows(reactions, primaryBeam=false, legCapacity=0){
   return reactions.map((r,i)=>{
     if (r.liftedOff){
       return `<tr>
@@ -2313,13 +2316,22 @@ function reactionRows(reactions){
         <td>Free</td>
         <td>0.00</td>
         <td>Separated — no bearing contact</td>
+        ${primaryBeam ? '<td>—</td><td>—</td>' : ''}
         <td><span class="tag tag-warn">LIFTED OFF — BEAM UPLIFTS HERE</span></td>
       </tr>`;
     }
     const isUplift = r.R < -1e-6;
     const dir = r.R>=0 ? 'Bearing (down on support)' : 'Uplift (up on support)';
+    const legLoad = !isUplift && r.R>1e-9 ? r.R : 0;
+    const legUtil = primaryBeam && legCapacity>0 && legLoad>0 ? legLoad/legCapacity : null;
     let status;
-    if (r.type==='free'){
+    if (primaryBeam && legLoad>0 && legUtil!=null){
+      status = legUtil<=1
+        ? '<span class="tag tag-pass">OK — LEG CAPACITY</span>'
+        : '<span class="tag tag-fail">FAIL — LEG CAPACITY</span>';
+    } else if (primaryBeam && legLoad>0 && legCapacity<=0){
+      status = '<span class="tag tag-neutral">LEG CAPACITY NOT ENTERED</span>';
+    } else if (r.type==='free'){
       status = isUplift ? '<span class="tag tag-fail">UPLIFT — NEEDS TIE-DOWN</span>' : '<span class="tag tag-pass">OK — BEARING ONLY</span>';
     } else {
       status = isUplift ? '<span class="tag tag-warn">TIE-DOWN RESISTING '+fmt(Math.abs(r.R),2)+' kN UPLIFT</span>' : '<span class="tag tag-pass">OK</span>';
@@ -2330,11 +2342,11 @@ function reactionRows(reactions){
       <td>${r.type==='tie'?'Tie-down':'Free'}</td>
       <td>${fmt(Math.abs(r.R),2)}</td>
       <td>${dir}</td>
+      ${primaryBeam ? `<td>${legCapacity>0 ? fmt(legCapacity,2)+' kN' : '—'}</td><td>${legUtil!=null ? fmt(legUtil*100,1)+'%' : '—'}</td>` : ''}
       <td>${status}</td>
     </tr>`;
   }).join('');
 }
-
 /* ---- Canvas: beam schematic ---- */
 function setupCanvas(id, hCss, opts){
   const o = opts||{};
