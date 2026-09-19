@@ -2128,10 +2128,12 @@ function onSchematicMouseDown(e){
     };
   } else if (hit.type==='udl-scale'){
     const u = udls[hit.index];
+    // UDL scale handle is isolated from point-load magnitude editing.
     dragCandidate = {
       type:'udl-scale', index: hit.index,
       startY: e.clientY,
       origMagStart: u.magStart, origMagEnd: u.magEnd,
+      origPointLoadMags: pointLoads.map(p=>p.mag),
       pxPerUnit: schematicGeom.arrowSpace / Math.max(1e-6, schematicGeom.maxUdlMag)
     };
   } else if (hit.type==='udl'){
@@ -2190,6 +2192,12 @@ function onSchematicDragMove(e){
     const scaleFactor = 1 + deltaMag/refMag;
     u.magStart = Math.round(draggingItem.origMagStart*scaleFactor*100)/100;
     u.magEnd = Math.round(draggingItem.origMagEnd*scaleFactor*100)/100;
+    // Hard isolation: dragging the UDL scale line must never modify point-load magnitudes.
+    if (Array.isArray(draggingItem.origPointLoadMags)) {
+      pointLoads.forEach((p,i)=>{
+        if (i < draggingItem.origPointLoadMags.length) p.mag = draggingItem.origPointLoadMags[i];
+      });
+    }
   } else if (draggingItem.type==='udl'){
     const u = udls[draggingItem.index];
     const curBeamX = beamXFromClientX(e.clientX);
