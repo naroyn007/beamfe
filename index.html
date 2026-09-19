@@ -2932,7 +2932,6 @@ function buildPrintReport(R){
 
   // redraw clean, print-safe versions of the diagrams into the report canvases
   const pageW = 680;
-  const printItemCount = R.supports.length + R.pointLoads.length + R.udls.length;
   const printSchematicScale = printItemCount >= 18 ? 0.76 : printItemCount >= 12 ? 0.86 : 1;
   const printSchematicHeight = Math.round(170 * printSchematicScale);
   const printSchematicLimits = {forceWidth:pageW, forceScale:2.5, printScale:printSchematicScale, printHeight:printSchematicHeight};
