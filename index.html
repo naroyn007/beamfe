@@ -2869,7 +2869,7 @@ function buildPrintReport(R){
   const ultraDensePrint = printItemCount >= 18;
   // Keep the report to exactly two pages. When page 1 is too dense, move Section 6
   // to page 2 so it stays with the diagrams instead of creating a third page.
-  const codeCheckOnPage2 = R.supports.length + R.pointLoads.length + R.udls.length >= 10;
+  const codeCheckOnPage2 = R.supports.length >= 6 || R.supports.length + R.pointLoads.length + R.udls.length >= 10;
   const codeCheckHtml = `
       <div class="pr-section-title">6. Code check summary</div>
       <table class="pr-table pr-code-summary">
