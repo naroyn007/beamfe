@@ -335,9 +335,13 @@
   .pr-infogrid td{padding:4px 0;}
   .pr-infogrid td.k{color:#6b7280;width:110px;}
   .pr-infogrid td.v{border-bottom:0.5px solid #d1d5db;padding-left:6px;}
-  .pr-section-title{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:13px;font-weight:700;
-    letter-spacing:0.5px;text-transform:uppercase;color:#111827;margin:22px 0 8px;
-    border-bottom:1px solid #111827;padding-bottom:4px;}
+  /* Section 1–7 headings: solid maroon report bars with inverted white text. */
+  .pr-section-title{
+    font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:13px;font-weight:700;
+    letter-spacing:0.5px;text-transform:uppercase;color:#ffffff;margin:14px 0 7px;
+    padding:4px 7px;background:#7f1d1d !important;border:0;border-radius:2px;
+    display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
   .pr-section-title:first-of-type{margin-top:0;}
   .pr-table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:4px;}
   /* Excel-style table headers: the whole header cell is filled, not just the text area. */
@@ -352,9 +356,9 @@
   .pr-table td{padding:5px 6px;border-bottom:0.5px solid #d1d5db;}
   /* Dense reports: compress only print content when the model has many supports/loads. */
   /* Compact separators for high-density tables. */
-  .pr-section-title.pr-compact-no-rule{border-bottom:0;padding-bottom:0;margin-bottom:4px;}
+  .pr-section-title.pr-compact-no-rule{border-bottom:0;padding:3px 6px;margin-bottom:4px;}
   .pr-page.pr-dense .pr-infogrid{margin-bottom:12px;}
-  .pr-page.pr-dense .pr-section-title{margin-top:12px;margin-bottom:5px;padding-bottom:3px;}
+  .pr-page.pr-dense .pr-section-title{margin-top:9px;margin-bottom:4px;padding:3px 6px;background:#7f1d1d !important;color:#ffffff;}
   .pr-page.pr-dense .pr-table{font-size:9.5px;}
   .pr-page.pr-dense .pr-table th{font-size:8.5px;padding:3px 4px;background:#7f1d1d !important;
     color:#ffffff;
@@ -365,7 +369,7 @@
   /* Extra compact mode keeps the final code-check table from being orphaned onto page 2. */
   .pr-page.pr-ultra-dense{padding:24px 30px;}
   .pr-page.pr-ultra-dense .pr-infogrid{margin-bottom:8px;font-size:10.5px;}
-  .pr-page.pr-ultra-dense .pr-section-title{margin-top:8px;margin-bottom:3px;padding-bottom:2px;font-size:11.5px;}
+  .pr-page.pr-ultra-dense .pr-section-title{margin-top:6px;margin-bottom:2px;padding:2px 5px;font-size:11.5px;background:#7f1d1d !important;color:#ffffff;}
   .pr-page.pr-ultra-dense .pr-table{font-size:8.5px;margin-bottom:2px;}
   .pr-page.pr-ultra-dense .pr-table th{font-size:7.5px;padding:2px 3px;background:#7f1d1d !important;
     color:#ffffff;
