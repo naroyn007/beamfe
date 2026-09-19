@@ -537,17 +537,21 @@
 
         <div class="stack">
           <div class="section-title">Allowables &amp; Limits</div>
-          <div class="row2">
+          <div class="row3">
             <div>
-              <label>Allow. Bending Moment (kN·m)</label>
-              <input type="number" id="allowFb" value="5" step="0.5">
+              <label>Allow. Sag Moment (kN·m)</label>
+              <input type="number" id="allowFbSag" value="5" step="0.5">
+            </div>
+            <div>
+              <label>Allow. Hog Moment (kN·m)</label>
+              <input type="number" id="allowFbHog" value="5" step="0.5">
             </div>
             <div>
               <label>Allow. Shear Force (kN)</label>
               <input type="number" id="allowFv" value="20" step="1">
             </div>
           </div>
-          <div class="field-note">Rated capacities (e.g. from a product datasheet, already including its own factor of safety) — compared directly against demand moment/shear, not a stress calculation.</div>
+          <div class="field-note">Rated capacities (e.g. from a product datasheet, already including its own factor of safety) — compared directly against demand, not a stress calculation. Sag and Hog default to the same value for symmetric sections; override Hog only if your section's capacity differs in that direction.</div>
           <div>
             <label>Deflection Limit — L /</label>
             <input type="number" id="deflLimit" value="270" step="10">
@@ -1330,7 +1334,8 @@ function runAnalysis(afterDraw){
   const trib = tribWidthValue || 0;
   const E = parseFloat(document.getElementById('propE').value)||0;
   const I = parseFloat(document.getElementById('propI').value)||0;
-  const Fb = parseFloat(document.getElementById('allowFb').value)||0; // allowable bending MOMENT capacity, kN·m
+  const FbSag = parseFloat(document.getElementById('allowFbSag').value)||0; // allowable SAGGING moment capacity, kN·m
+  const FbHog = parseFloat(document.getElementById('allowFbHog').value)||0; // allowable HOGGING moment capacity, kN·m
   const Fv = parseFloat(document.getElementById('allowFv').value)||0; // allowable shear FORCE capacity, kN
   const deflDenom = parseFloat(document.getElementById('deflLimit').value)||300;
 
@@ -1397,22 +1402,34 @@ function runAnalysis(afterDraw){
   const MabsAtX = Math.abs(Mmax)>=Math.abs(Mmin) ? MmaxX : MminX;
   const VabsAtX = Math.abs(Vmax)>=Math.abs(Vmin) ? VmaxX : VminX;
 
-  // fb/fv are now direct DEMAND moment (kN·m) and shear (kN) — compared straight against
-  // the rated capacities Fb/Fv from the product datasheet, not converted through a section
-  // modulus/area stress calculation.
-  const fb = Mabs;
+  // Raw M sign convention (see computeDiagrams): positive = sagging, negative = hogging.
+  // Sag and Hog demand are each checked against their own capacity, never against one
+  // combined |M| — a section can be rated differently in each direction.
+  const Msag = Math.max(0, Mmax);
+  const Mhog = Math.max(0, -Mmin);
+  const MsagAtX = Msag>0 ? MmaxX : null;
+  const MhogAtX = Mhog>0 ? MminX : null;
+
+  // fv is direct DEMAND shear (kN) — compared straight against the rated capacity Fv from
+  // the product datasheet, not converted through a section modulus/area stress calculation.
   const fv = Vabs;
   const deflRatioActual = Dabs>1e-9 ? (L*1000)/Dabs : Infinity;
   const deflAllowIn = (L*1000)/deflDenom; // mm
 
-  const bendingPass = Fb>0 ? fb<=Fb : null;
+  const bendingSagPass = FbSag>0 ? Msag<=FbSag : null;
+  const bendingHogPass = FbHog>0 ? Mhog<=FbHog : null;
+  const bendingPass = (bendingSagPass===null && bendingHogPass===null) ? null
+    : (bendingSagPass!==false && bendingHogPass!==false);
   const shearPass = Fv>0 ? fv<=Fv : null;
   const deflPass = Dabs<=deflAllowIn;
 
   renderResults({
     L, supports, pointLoads, udls, trib, reactions, diag, deflSamples,
     Vabs, VabsAtX, Mabs, MabsAtX, Dabs, DabsX,
-    fb, Fb, bendingPass, fv, Fv, shearPass,
+    Msag, MsagAtX, FbSag, bendingSagPass,
+    Mhog, MhogAtX, FbHog, bendingHogPass,
+    bendingPass,
+    fv, Fv, shearPass,
     deflAllowIn, deflDenom, deflPass, deflRatioActual, wasAdjusted
   }, afterDraw);
 
@@ -1511,18 +1528,25 @@ function renderResults(R, afterDraw){
         ${summaryCell('Max Shear','V', fmt(R.Vabs,2),'kN', `at ${fmt(R.VabsAtX,2)} m`, null)}
         ${summaryCell('Max Moment','M', fmt(R.Mabs,2),'kN·m', `at ${fmt(R.MabsAtX,2)} m`, null)}
         ${summaryCell('Max Deflection','Δ', fmt(R.Dabs,2),'mm', `L/${fmt(R.deflRatioActual,0)} actual (limit L/${fmt(R.deflDenom,0)})`, R.deflPass)}
-        ${summaryCell('Bending Moment','M', fmt(R.fb,2),'kN·m', R.Fb ? `vs. Mb = ${fmt(R.Fb,2)} kN·m` : 'no allowable set', R.bendingPass)}
+        ${summaryCell('Bending Moment','M', fmt(R.Mabs,2),'kN·m', `Sag ${fmt(R.Msag,2)}${R.FbSag?'/'+fmt(R.FbSag,2):''} &middot; Hog ${fmt(R.Mhog,2)}${R.FbHog?'/'+fmt(R.FbHog,2):''}`, R.bendingPass)}
       </div>
       <div class="panel-body">
         <table>
           <thead><tr><th>Check</th><th>Demand</th><th>Capacity</th><th>Ratio</th><th>Status</th></tr></thead>
           <tbody>
             <tr>
-              <td>Bending Moment (M)</td>
-              <td>${fmt(R.fb,2)} kN&middot;m</td>
-              <td>${R.Fb? fmt(R.Fb,2)+' kN&middot;m' : '—'}</td>
-              <td>${R.Fb? fmt(R.fb/R.Fb,2) : '—'}</td>
-              <td>${statusTag(R.bendingPass)}</td>
+              <td>Sag Moment (M+)</td>
+              <td>${fmt(R.Msag,2)} kN&middot;m${R.MsagAtX!=null?' at x='+fmt(R.MsagAtX,2)+'m':''}</td>
+              <td>${R.FbSag? fmt(R.FbSag,2)+' kN&middot;m' : '—'}</td>
+              <td>${R.FbSag? fmt(R.Msag/R.FbSag,2) : '—'}</td>
+              <td>${statusTag(R.bendingSagPass)}</td>
+            </tr>
+            <tr>
+              <td>Hog Moment (M&minus;)</td>
+              <td>${fmt(R.Mhog,2)} kN&middot;m${R.MhogAtX!=null?' at x='+fmt(R.MhogAtX,2)+'m':''}</td>
+              <td>${R.FbHog? fmt(R.FbHog,2)+' kN&middot;m' : '—'}</td>
+              <td>${R.FbHog? fmt(R.Mhog/R.FbHog,2) : '—'}</td>
+              <td>${statusTag(R.bendingHogPass)}</td>
             </tr>
             <tr>
               <td>Shear Force (V)</td>
@@ -1546,8 +1570,12 @@ function renderResults(R, afterDraw){
 
   function drawAll(){
     drawSchematic(R);
-    renderInteractiveSeries('cvShear', R.diag.map(d=>({x:d.x,y:d.V})), 'kN', '#6FD6E8');
-    renderInteractiveSeries('cvMoment', R.diag.map(d=>({x:d.x,y:d.M})), 'kN·m', '#F2A93B', true, true);
+    const shearLimits = computeSidedLimitLines(R.diag.map(d=>d.V), R.Fv, R.Fv,
+      cap=>'Allow. V = '+fmt(cap,2)+' kN', cap=>'Allow. V = \u2212'+fmt(cap,2)+' kN');
+    const momentLimits = computeSidedLimitLines(R.diag.map(d=>d.M), R.FbSag, R.FbHog,
+      cap=>'Allow. Sag M = '+fmt(cap,2)+' kN\u00b7m', cap=>'Allow. Hog M = '+fmt(cap,2)+' kN\u00b7m');
+    renderInteractiveSeries('cvShear', R.diag.map(d=>({x:d.x,y:d.V})), 'kN', '#6FD6E8', false, false, shearLimits);
+    renderInteractiveSeries('cvMoment', R.diag.map(d=>({x:d.x,y:d.M})), 'kN·m', '#F2A93B', true, true, momentLimits);
     renderInteractiveSeries('cvDefl', R.deflSamples.map(d=>({x:d.x,y:d.defl_mm})), 'mm', '#5FCB8D');
     if (typeof afterDraw === 'function') afterDraw();
   }
@@ -2229,14 +2257,17 @@ function renderTableBody(cat){
 
 
 /* ---- Canvas: generic V/M/Defl series ---- */
-function drawSeries(id, points, unit, color, fillFromZero, printMode, canvasOpts, hoverX, invertY){
+function drawSeries(id, points, unit, color, fillFromZero, printMode, canvasOpts, hoverX, invertY, limitLines){
   const {ctx,w,h} = setupCanvas(id, 180, canvasOpts);
   ctx.clearRect(0,0,w,h);
   const padL=60, padR=20, padT=14, padB=22;
   const plotW = w-padL-padR, plotH = h-padT-padB;
   const xs = points.map(p=>p.x), ys = points.map(p=>p.y);
   const xMin=Math.min(...xs), xMax=Math.max(...xs);
-  let yMin=Math.min(...ys,0), yMax=Math.max(...ys,0);
+  // Limit-line values are folded into the y-range too, so a capacity line is never clipped
+  // off-chart even when the actual demand curve sits well inside it.
+  const limitVals = (limitLines||[]).map(l=>l.value);
+  let yMin=Math.min(...ys,...limitVals,0), yMax=Math.max(...ys,...limitVals,0);
   if (yMax-yMin < 1e-6){ yMax+=1; yMin-=1; }
   const yPad = (yMax-yMin)*0.12;
   yMin -= yPad; yMax += yPad;
@@ -2297,6 +2328,31 @@ function drawSeries(id, points, unit, color, fillFromZero, printMode, canvasOpts
   ctx.fillText(xMin.toFixed(1)+' m', padL-2, h-6);
   ctx.fillText(xMax.toFixed(1)+' m', w-padR-30, h-6);
 
+  // capacity limit line(s) — only the side(s) the curve actually reaches get a line (see
+  // computeSidedLimitLines), so a beam that only ever sags doesn't get a clutter line for
+  // a hogging capacity it never approaches
+  if (limitLines && limitLines.length){
+    const limitColor = printMode ? '#b91c1c' : '#EF6B62';
+    ctx.font = '10px IBM Plex Mono';
+    limitLines.forEach(ll=>{
+      const ly = Y(ll.value);
+      ctx.strokeStyle = limitColor; ctx.lineWidth = 1.5; ctx.setLineDash([6,4]);
+      ctx.beginPath(); ctx.moveTo(padL, ly); ctx.lineTo(w-padR, ly); ctx.stroke();
+      ctx.setLineDash([]);
+      if (ll.label){
+        const labelW = ctx.measureText(ll.label).width;
+        let ty = ly - 4;
+        // keep the label inside the plot area instead of clipping off the top/bottom edge
+        if (ty < padT+9) ty = ly + 12;
+        if (ty > padT+plotH-2) ty = ly - 6;
+        ctx.fillStyle = printMode ? 'rgba(255,255,255,0.85)' : 'rgba(10,31,58,0.85)';
+        ctx.fillRect(w-padR-labelW-6, ty-9, labelW+6, 12);
+        ctx.fillStyle = limitColor;
+        ctx.fillText(ll.label, w-padR-labelW-3, ty);
+      }
+    });
+  }
+
   // hover crosshair + exact-value tooltip (screen only, never in the printed report)
   if (!printMode && typeof hoverX === 'number' && isFinite(hoverX) && points.length>1){
     const hx = Math.max(xMin, Math.min(xMax, hoverX));
@@ -2346,8 +2402,8 @@ function drawSeries(id, points, unit, color, fillFromZero, printMode, canvasOpts
 }
 /* Wraps drawSeries with mouse tracking so hovering the chart shows a crosshair + exact
    x/y readout, interpolated along the drawn line rather than snapped to the nearest sample. */
-function renderInteractiveSeries(id, points, unit, color, fillFromZero, invertY){
-  let geom = drawSeries(id, points, unit, color, fillFromZero, false, undefined, null, invertY);
+function renderInteractiveSeries(id, points, unit, color, fillFromZero, invertY, limitLines){
+  let geom = drawSeries(id, points, unit, color, fillFromZero, false, undefined, null, invertY, limitLines);
   const cv = document.getElementById(id);
   if (!cv) return;
   cv.style.cursor = 'crosshair';
@@ -2356,11 +2412,28 @@ function renderInteractiveSeries(id, points, unit, color, fillFromZero, invertY)
     const mx = e.clientX - rect.left;
     if (!geom || !geom.plotW) return;
     const dataX = geom.xMin + (mx-geom.padL)/geom.plotW*(geom.xMax-geom.xMin);
-    geom = drawSeries(id, points, unit, color, fillFromZero, false, undefined, dataX, invertY);
+    geom = drawSeries(id, points, unit, color, fillFromZero, false, undefined, dataX, invertY, limitLines);
   };
   cv.onmouseleave = ()=>{
-    geom = drawSeries(id, points, unit, color, fillFromZero, false, undefined, null, invertY);
+    geom = drawSeries(id, points, unit, color, fillFromZero, false, undefined, null, invertY, limitLines);
   };
+}
+
+/* Decides which capacity line(s) belong on a diagram: only the side(s) the raw curve actually
+   reaches (beyond a small epsilon, so a curve that's mathematically all-positive but touches
+   0.000 at a support doesn't spuriously draw both sides). posCap/negCap are magnitudes; the
+   returned "value" is already signed to match the curve's own raw sign convention (positive
+   side gets +posCap, negative side gets -negCap) so it plots through the same Y()/invertY
+   mapping as the curve itself — no separate sign handling needed at the call site. */
+function computeSidedLimitLines(rawValues, posCap, negCap, posLabelFn, negLabelFn){
+  if (!rawValues.length) return [];
+  const maxV = Math.max(...rawValues), minV = Math.min(...rawValues);
+  const scale = Math.max(Math.abs(maxV), Math.abs(minV), 1e-9);
+  const eps = scale*0.001;
+  const lines = [];
+  if (maxV > eps && posCap>0) lines.push({value:posCap, label:posLabelFn(posCap)});
+  if (minV < -eps && negCap>0) lines.push({value:-negCap, label:negLabelFn(negCap)});
+  return lines;
 }
 
 function hexA(hex, a){
@@ -2391,8 +2464,12 @@ function esc(s){
 function buildCodeCheckRows(R){
   const rows = [];
   rows.push({
-    check:'Bending Moment (M)', demand:fmt(R.fb,2)+' kN\u00b7m',
-    capacity: R.Fb? fmt(R.Fb,2)+' kN\u00b7m':'—', ratio: R.Fb? fmt(R.fb/R.Fb,2):'—', pass:R.bendingPass
+    check:'Sag Moment (M+)', demand:fmt(R.Msag,2)+' kN\u00b7m',
+    capacity: R.FbSag? fmt(R.FbSag,2)+' kN\u00b7m':'—', ratio: R.FbSag? fmt(R.Msag/R.FbSag,2):'—', pass:R.bendingSagPass
+  });
+  rows.push({
+    check:'Hog Moment (M\u2212)', demand:fmt(R.Mhog,2)+' kN\u00b7m',
+    capacity: R.FbHog? fmt(R.FbHog,2)+' kN\u00b7m':'—', ratio: R.FbHog? fmt(R.Mhog/R.FbHog,2):'—', pass:R.bendingHogPass
   });
   rows.push({
     check:'Shear Force (V)', demand:fmt(R.fv,2)+' kN',
@@ -2475,12 +2552,13 @@ function buildPrintReport(R){
 
       <div class="pr-section-title">3. Section properties</div>
       <table class="pr-table">
-        <thead><tr><th>Section</th><th>E</th><th>I</th><th>Allow. Bending Moment</th><th>Allow. Shear Force</th><th>Defl. limit</th></tr></thead>
+        <thead><tr><th>Section</th><th>E</th><th>I</th><th>Allow. Sag M</th><th>Allow. Hog M</th><th>Allow. Shear</th><th>Defl. limit</th></tr></thead>
         <tbody><tr>
           <td>${esc(sectionName)}</td>
           <td>${fmt(parseFloat(document.getElementById('propE').value)||0, 0)} MPa</td>
           <td>${fmt(parseFloat(document.getElementById('propI').value)||0, 0)} mm\u2074</td>
-          <td>${R.Fb ? fmt(R.Fb,2)+' kN\u00b7m' : '—'}</td>
+          <td>${R.FbSag ? fmt(R.FbSag,2)+' kN\u00b7m' : '—'}</td>
+          <td>${R.FbHog ? fmt(R.FbHog,2)+' kN\u00b7m' : '—'}</td>
           <td>${R.Fv ? fmt(R.Fv,2)+' kN' : '—'}</td>
           <td>L/${fmt(R.deflDenom,0)}</td>
         </tr></tbody>
@@ -2551,9 +2629,13 @@ function buildPrintReport(R){
 
   // redraw clean, print-safe versions of the diagrams into the report canvases
   const pageW = 680;
+  const printShearLimits = computeSidedLimitLines(R.diag.map(d=>d.V), R.Fv, R.Fv,
+    cap=>'Allow. V = '+fmt(cap,2)+' kN', cap=>'Allow. V = \u2212'+fmt(cap,2)+' kN');
+  const printMomentLimits = computeSidedLimitLines(R.diag.map(d=>d.M), R.FbSag, R.FbHog,
+    cap=>'Allow. Sag M = '+fmt(cap,2)+' kN\u00b7m', cap=>'Allow. Hog M = '+fmt(cap,2)+' kN\u00b7m');
   drawSchematic(R, 'printSchematic', true, {forceWidth:pageW, forceScale:2.5});
-  drawSeries('printShear', R.diag.map(d=>({x:d.x,y:d.V})), 'kN', '#6FD6E8', false, true, {forceWidth:pageW, forceScale:2.5});
-  drawSeries('printMoment', R.diag.map(d=>({x:d.x,y:d.M})), 'kN·m', '#F2A93B', true, true, {forceWidth:pageW, forceScale:2.5}, undefined, true);
+  drawSeries('printShear', R.diag.map(d=>({x:d.x,y:d.V})), 'kN', '#6FD6E8', false, true, {forceWidth:pageW, forceScale:2.5}, undefined, false, printShearLimits);
+  drawSeries('printMoment', R.diag.map(d=>({x:d.x,y:d.M})), 'kN·m', '#F2A93B', true, true, {forceWidth:pageW, forceScale:2.5}, undefined, true, printMomentLimits);
   drawSeries('printDefl', R.deflSamples.map(d=>({x:d.x,y:d.defl_mm})), 'mm', '#5FCB8D', false, true, {forceWidth:pageW, forceScale:2.5});
 }
 
@@ -2578,7 +2660,8 @@ function serializeModel(){
     sectionName: document.getElementById('sectionName').value,
     propE: document.getElementById('propE').value,
     propI: document.getElementById('propI').value,
-    allowFb: document.getElementById('allowFb').value,
+    allowFbSag: document.getElementById('allowFbSag').value,
+    allowFbHog: document.getElementById('allowFbHog').value,
     allowFv: document.getElementById('allowFv').value,
     deflLimit: document.getElementById('deflLimit').value,
     project: {
@@ -2605,7 +2688,15 @@ function applyModel(data){
     setVal('sectionName', data.sectionName);
     setVal('propE', data.propE);
     setVal('propI', data.propI);
-    setVal('allowFb', data.allowFb);
+    // allowFbSag/allowFbHog is the current format; a model saved before this feature only
+    // has one "allowFb" value — apply it to both, same as the symmetric-section default.
+    if (data.allowFbSag!=null || data.allowFbHog!=null){
+      setVal('allowFbSag', data.allowFbSag);
+      setVal('allowFbHog', data.allowFbHog);
+    } else if (data.allowFb!=null){
+      setVal('allowFbSag', data.allowFb);
+      setVal('allowFbHog', data.allowFb);
+    }
     setVal('allowFv', data.allowFv);
     setVal('deflLimit', data.deflLimit);
     if (data.project){
@@ -2656,7 +2747,8 @@ const EXCEL_FIELD_ALIASES = {
   tribWidth: ['tribwidth','tributarywidth','trib'],
   propE: ['e','modulus','elasticmodulus','youngsmodulus'],
   propI: ['i','momentofinertia','inertia'],
-  allowFb: ['fb','mb','allowbend','allowablebending','bendingcapacity','momentcapacity','allowablemoment','ratedmoment','allowbendingmoment'],
+  allowFbSag: ['fb','mb','allowbend','allowablebending','bendingcapacity','momentcapacity','allowablemoment','ratedmoment','allowbendingmoment','fbsag','msag','sagmoment','sagcapacity','allowsagmoment','allowablesaggingmoment'],
+  allowFbHog: ['fbhog','mhog','hogmoment','hoggingmoment','hogcapacity','allowhogmoment','allowablehoggingmoment','hoggingcapacity'],
   allowFv: ['fv','vb','allowshear','allowableshear','shearcapacity','ratedshear','allowableshearforce','allowshearforce'],
   deflLimit: ['defllimit','deflectionlimit','deflratio','ldenom','deflectionratio']
 };
@@ -2690,7 +2782,11 @@ function applyExcelFields(fields, name){
   setFieldVal('tribWidth', fields.tribWidth);
   setFieldVal('propE', fields.propE);
   setFieldVal('propI', fields.propI);
-  setFieldVal('allowFb', fields.allowFb);
+  setFieldVal('allowFbSag', fields.allowFbSag);
+  // Most sections are symmetric (equal sag/hog capacity) — default Hog to whatever Sag was
+  // just set to unless the sheet had its own Hog column, so a plain single-capacity sheet
+  // still "just works" without the user having to fill in a field they've never had before.
+  setFieldVal('allowFbHog', fields.allowFbHog!=null ? fields.allowFbHog : fields.allowFbSag);
   setFieldVal('allowFv', fields.allowFv);
   setFieldVal('deflLimit', fields.deflLimit);
   if (name) setFieldVal('sectionName', name);
@@ -2698,7 +2794,7 @@ function applyExcelFields(fields, name){
 
 const EXCEL_FIELD_LABELS = {
   beamLength:'Length (m)', tribWidth:'Trib. width (m)', propE:'E (MPa)', propI:'I (mm\u2074)',
-  allowFb:'Mb (kN\u00b7m)', allowFv:'Vb (kN)', deflLimit:'Defl. limit (L/)'
+  allowFbSag:'Mb Sag (kN\u00b7m)', allowFbHog:'Mb Hog (kN\u00b7m)', allowFv:'Vb (kN)', deflLimit:'Defl. limit (L/)'
 };
 
 /* ---- Persistent saved-beams library (survives across sessions, browser-local) ---- */
@@ -2756,6 +2852,18 @@ document.getElementById('clearLibraryBtn').addEventListener('click', ()=>{
   renderSectionLibraryDropdown();
 });
 renderSectionLibraryDropdown();
+
+// Hog capacity defaults to whatever Sag is set to (the common symmetric-section case) —
+// once the user types directly into Hog, it decouples and is left alone from then on.
+(function(){
+  const sagEl = document.getElementById('allowFbSag');
+  const hogEl = document.getElementById('allowFbHog');
+  if (!sagEl || !hogEl) return;
+  sagEl.addEventListener('input', ()=>{
+    if (hogEl.dataset.userEdited !== '1') hogEl.value = sagEl.value;
+  });
+  hogEl.addEventListener('input', ()=>{ hogEl.dataset.userEdited = '1'; });
+})();
 
 function openExcelPreview(rows){
   const root = document.getElementById('tableOverlayRoot');
