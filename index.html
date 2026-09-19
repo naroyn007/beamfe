@@ -461,6 +461,19 @@
     background:linear-gradient(180deg, var(--navy-panel), var(--navy-mid));
     border:1px solid var(--blue-line-dim);border-radius:3px;padding:32px 28px;
   }
+  .license-box.disclaimer-open{max-width:720px;text-align:left;}
+  .legal-title{font-family:var(--head);font-size:18px;font-weight:700;letter-spacing:1.2px;
+    text-transform:uppercase;color:var(--cyan);margin-bottom:10px;}
+  .legal-copy{font-size:11.5px;line-height:1.7;color:var(--paper);max-height:52vh;overflow:auto;
+    padding-right:8px;}
+  .legal-copy p{margin:0 0 10px;}
+  .legal-copy ol{margin:0 0 12px;padding-left:20px;}
+  .legal-copy li{margin:0 0 7px;}
+  .legal-check{display:flex;align-items:flex-start;gap:9px;margin-top:14px;padding:10px;
+    border:1px solid var(--blue-line-dim);background:rgba(255,255,255,0.02);cursor:pointer;}
+  .legal-check input{margin-top:2px;flex:0 0 auto;accent-color:var(--cyan);}
+  .legal-check span{font-size:11px;line-height:1.55;color:var(--paper);}
+  .legal-accept-btn{margin-top:12px;}
   .license-brand{font-family:var(--head);font-weight:700;font-size:30px;letter-spacing:2px;color:var(--paper);}
   .license-brand span{color:var(--cyan);}
   .license-sub{font-size:12px;color:var(--blue-line-dim);letter-spacing:0.5px;margin:6px 0 22px;}
@@ -501,6 +514,27 @@
 <div id="licenseGate" class="license-gate">
   <div class="license-box">
     <div class="license-brand">BEAM<span>//</span>FE</div>
+
+    <div id="authDisclaimerView" style="display:none;">
+      <div class="legal-title">Important Notice &amp; Disclaimer</div>
+      <div class="legal-copy">
+        <p>BEAM//FE is an engineering calculation and analysis tool intended to assist qualified users with structural engineering calculations.</p>
+        <p>By checking the box below and selecting <b>Continue</b>, I acknowledge and agree that:</p>
+        <ol>
+          <li>BEAM//FE provides calculation results for design assistance and does not replace engineering judgment, independent verification, applicable standards, codes, project requirements, or professional review.</li>
+          <li>I am responsible for confirming the accuracy and suitability of the input data, assumptions, material properties, loads, boundary conditions, design criteria, and calculation results before relying on them.</li>
+          <li>I will independently verify the results and determine whether the analysis is appropriate for the specific project, structure, materials, loading conditions, and applicable requirements.</li>
+          <li>BEAM//FE and its developer are not responsible for decisions made solely on the basis of unverified calculation results or for errors arising from incorrect, incomplete, or inappropriate input data.</li>
+          <li>I understand that the calculation results are provided as an engineering aid and should not be treated as a substitute for the review, approval, or professional responsibility required for a particular project or jurisdiction.</li>
+        </ol>
+      </div>
+      <label class="legal-check">
+        <input type="checkbox" id="legalAcceptanceCheckbox">
+        <span>I have read, understood, and agree to this notice and disclaimer, and I acknowledge these conditions each time I use BEAM//FE.</span>
+      </label>
+      <button class="license-unlock-btn legal-accept-btn" id="legalAcceptBtn" disabled>Continue ▸</button>
+      <div class="license-msg" id="legalAcceptMsg"></div>
+    </div>
 
     <div id="authLoginView">
       <div class="license-sub">Log in to your account</div>
@@ -766,6 +800,28 @@ let currentLicense = null; // {license_type, expires_at}
 let currentUserEmail = null;
 let inPasswordRecovery = false; // true while showing the "set a new password" screen — blocks
                                   // the normal login/license-check flow from racing past it
+const LEGAL_DOCUMENT_TYPE = 'beamfe-disclaimer';
+const LEGAL_DOCUMENT_VERSION = '1.0';
+const LEGAL_DOCUMENT_TEXT = [
+  'BEAM//FE is an engineering calculation and analysis tool intended to assist qualified users with structural engineering calculations.',
+  'By checking the box below and selecting Continue, I acknowledge and agree that:',
+  '1. BEAM//FE provides calculation results for design assistance and does not replace engineering judgment, independent verification, applicable standards, codes, project requirements, or professional review.',
+  '2. I am responsible for confirming the accuracy and suitability of the input data, assumptions, material properties, loads, boundary conditions, design criteria, and calculation results before relying on them.',
+  '3. I will independently verify the results and determine whether the analysis is appropriate for the specific project, structure, materials, loading conditions, and applicable requirements.',
+  '4. BEAM//FE and its developer are not responsible for decisions made solely on the basis of unverified calculation results or for errors arising from incorrect, incomplete, or inappropriate input data.',
+  '5. I understand that the calculation results are provided as an engineering aid and should not be treated as a substitute for the review, approval, or professional responsibility required for a particular project or jurisdiction.',
+  'I have read, understood, and agree to this notice and disclaimer, and I acknowledge these conditions each time I use BEAM//FE.'
+].join('\n');
+
+async function getLegalDocumentHash(){
+  if (window.crypto && crypto.subtle && window.TextEncoder){
+    const bytes = new TextEncoder().encode(LEGAL_DOCUMENT_TEXT);
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+  return 'sha256-unavailable';
+}
+
 
 function getLicenseWatermarkText(){
   // Watermark only ever shows for trial usage — a paid license produces a clean report
@@ -782,10 +838,12 @@ function hideAllGateViews(){
   });
 }
 function hideAllGateViews(){
-  ['authLoginView','authSignupView','authResetView','licenseNeededView'].forEach(id=>{
+  ['authLoginView','authSignupView','authResetView','licenseNeededView','authDisclaimerView'].forEach(id=>{
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
+  const box = document.querySelector('#licenseGate .license-box');
+  if (box) box.classList.remove('disclaimer-open');
 }
 function showLoginView(msg, msgClass){
   if (inPasswordRecovery) return; // don't let a slower in-flight check overwrite the reset screen
@@ -825,6 +883,73 @@ function showLicenseNeededView(email, reasonText){
   document.getElementById('licenseNeededMsg').className = 'license-msg';
   document.getElementById('gumroadKeyInput').value = '';
 }
+function showDisclaimerView(){
+  const gate = document.getElementById('licenseGate');
+  const box = document.querySelector('#licenseGate .license-box');
+  if (gate) gate.style.display = 'flex';
+  if (box) box.classList.add('disclaimer-open');
+  hideAllGateViews();
+  const view = document.getElementById('authDisclaimerView');
+  if (view) view.style.display = 'block';
+  const cb = document.getElementById('legalAcceptanceCheckbox');
+  const btn = document.getElementById('legalAcceptBtn');
+  const msg = document.getElementById('legalAcceptMsg');
+  if (cb) cb.checked = false;
+  if (btn) btn.disabled = true;
+  if (msg){
+    msg.textContent = '';
+    msg.className = 'license-msg';
+  }
+}
+
+async function recordLegalAcceptance(){
+  const cb = document.getElementById('legalAcceptanceCheckbox');
+  const btn = document.getElementById('legalAcceptBtn');
+  const msg = document.getElementById('legalAcceptMsg');
+  if (!cb || !btn || !msg || !cb.checked || !sb) return;
+  btn.disabled = true;
+  msg.textContent = 'Recording acceptance…';
+  msg.className = 'license-msg pending';
+  try{
+    const {data:{user}, error:userError} = await sb.auth.getUser();
+    if (userError || !user){
+      throw new Error(userError?.message || 'No authenticated user session.');
+    }
+    const documentHash = await getLegalDocumentHash();
+    const {error} = await sb.from('beamfe_legal_acceptances').insert({
+      user_id:user.id,
+      product_id:PRODUCT_ID,
+      document_type:LEGAL_DOCUMENT_TYPE,
+      document_version:LEGAL_DOCUMENT_VERSION,
+      document_hash:documentHash,
+      user_agent:navigator.userAgent,
+      path:window.location.pathname
+    });
+    if (error) throw error;
+    msg.textContent = 'Acceptance recorded ✓';
+    msg.className = 'license-msg ok';
+    setTimeout(()=>{
+      hideLicenseGate();
+      renderLicenseFooter();
+    }, 180);
+  }catch(err){
+    console.error('Legal acceptance recording failed', err);
+    msg.textContent = 'Could not record your acceptance. Please try again.';
+    msg.className = 'license-msg err';
+    btn.disabled = false;
+    if (cb) cb.checked = true;
+  }
+}
+
+const legalCb=document.getElementById('legalAcceptanceCheckbox');
+const legalBtn=document.getElementById('legalAcceptBtn');
+if (legalCb && legalBtn){
+  legalCb.addEventListener('change', ()=>{
+    legalBtn.disabled = !legalCb.checked;
+  });
+  legalBtn.addEventListener('click', recordLegalAcceptance);
+}
+
 function hideLicenseGate(){
   const gate = document.getElementById('licenseGate');
   if (gate) gate.style.display = 'none';
@@ -895,7 +1020,7 @@ async function attemptUpgradeRedeem(){
   btn.disabled = false;
   if (result.error){ msg.textContent = result.error; msg.className = 'license-msg err'; return; }
   msg.textContent = 'License activated!'; msg.className = 'license-msg ok';
-  await checkLicenseAndRoute(currentUserEmail);
+  await checkLicenseAndRoute(currentUserEmail, {showDisclaimer:false});
   closeAllPopups();
 }
 
@@ -910,11 +1035,15 @@ async function callVerifyLicense(action, extra){
   return data;
 }
 
-async function checkLicenseAndRoute(userEmail){
+async async function checkLicenseAndRoute(userEmail, options){
   const result = await callVerifyLicense('check_license');
   if (result.valid){
     currentLicense = {license_type: result.license_type, expires_at: result.expires_at};
     currentUserEmail = userEmail;
+    if (!options || options.showDisclaimer !== false){
+      showDisclaimerView();
+      return true;
+    }
     hideLicenseGate();
     renderLicenseFooter();
     return true;
