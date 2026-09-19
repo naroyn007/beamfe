@@ -242,6 +242,30 @@ All magnitude-type drags (`udl-mag`, `udl-scale`, `pointload-mag`) share the sam
 
 ### Current Project Milestone — PDF Report + Corporate Styling (2026-09-19)
 
+### Next Horizon — Project-Scoped Multi-Analysis (2026-09-19)
+
+**Status: Development testing**
+
+Implemented in `development`:
+- Project Details are now shared across the project: Project Name, Designed By, Checked By, and Date.
+- Added an **Analysis** dropdown plus **+ New Analysis** inside the Project Details area.
+- Each analysis has its own Analysis Name and Beam / Member ID.
+- Each analysis independently retains its beam length, tributary width, section properties, allowables, supports, point loads, UDLs, and UDL mode.
+- Switching analyses saves the current model and loads the selected analysis without re-entering shared project details.
+- New analyses start as a copy of the current analysis, then receive a new Analysis N / B-N identity for editing.
+- Save/Load/autosave format upgraded to version 2 with an `analyses[]` structure and backward-compatible migration from the previous single-analysis JSON format.
+- PDF generation now gathers and validates every analysis in the project and compiles them into one consolidated report, with shared project information synchronized across report pages.
+- Each analysis retains the existing two-sheet report structure; page numbering is calculated across the complete consolidated report.
+- PDF section-property values are bound to the correct analysis rather than the currently visible UI analysis.
+- Invalid analyses are reported and excluded from the consolidated PDF instead of inheriting a previous analysis result.
+
+**Testing focus:**
+- Create Analysis 1 and Analysis 2 under the same project; change supports/loads independently and switch back and forth.
+- Confirm Project Name / Designed By / Checked By / Date remain unchanged across every analysis.
+- Save, reload, and confirm all analyses return correctly.
+- Generate a PDF with 2–3 analyses and confirm each analysis has its own Beam / Member ID, model data, results, and diagrams.
+- Confirm no third-page behavior is introduced inside an individual analysis's two-sheet layout.
+
 **Status: Development testing**
 
 Completed in `development`:
