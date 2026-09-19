@@ -3208,8 +3208,10 @@ function collectAllAnalysisResults(){
   syncCurrentAnalysisToStore();
   const originalIndex = currentAnalysisIndex;
   const collected = [];
+  const invalid = [];
   for (let i=0; i<analyses.length; i++){
     loadAnalysisToDom(i);
+    lastResults = null;
     suppressAutosaveOnce = true;
     runAnalysis();
     if (lastResults){
@@ -3222,11 +3224,17 @@ function collectAllAnalysisResults(){
           analysisIndex:i
         }
       });
+    } else {
+      invalid.push(analyses[i].name || ('Analysis '+(i+1)));
     }
   }
   loadAnalysisToDom(originalIndex);
+  lastResults = null;
   suppressAutosaveOnce = true;
   runAnalysis();
+  if (invalid.length){
+    alert('These analyses could not be included because they are not valid:\n\n'+invalid.join('\n'));
+  }
   return collected;
 }
 
