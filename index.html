@@ -406,6 +406,10 @@
   .pr-diagrams{display:flex;flex-direction:column;gap:8px;margin-bottom:4px;}
   /* Page 2 is intentionally compact so Sections 6–7 stay on the same sheet. */
   .pr-page .pr-page-break + .pr-titleblock{margin-bottom:9px;padding-bottom:8px;}
+  .pr-page.pr-page2 .pr-titleblock{margin-bottom:9px;padding-bottom:8px;}
+  .pr-page.pr-page2 .pr-infogrid{margin-bottom:8px;font-size:10px;}
+  .pr-page.pr-page2 .pr-section-title{margin-top:6px;margin-bottom:4px;}
+  .pr-page.pr-page2 .pr-footer{margin-top:10px;padding-top:6px;font-size:8.5px;line-height:1.35;}
   .pr-page .pr-page-break + .pr-titleblock + .pr-infogrid{margin-bottom:8px;font-size:10px;}
   .pr-page .pr-page-break + .pr-titleblock + .pr-infogrid + .pr-section-title{margin-top:6px;margin-bottom:4px;}
   .pr-page .pr-page-break + .pr-titleblock ~ .pr-footer{margin-top:10px;padding-top:6px;font-size:8.5px;line-height:1.35;}
@@ -3183,6 +3187,30 @@ function buildPrintReportSingle(R, meta){
         Preliminary design aid — verify against applicable code and a licensed engineer's stamp before construction use.
       </div>
     </div>`;
+
+  // Split the two logical sheets into two real print-page containers.
+  // Keeping page 1 and page 2 as separate .pr-page elements prevents the browser
+  // from reflowing an oversized analysis into a third physical sheet.
+  const reportPage1 = root.querySelector('.pr-page');
+  const internalPageBreak = reportPage1 ? reportPage1.querySelector(':scope > .pr-page-break') : null;
+  if (reportPage1 && internalPageBreak){
+    const reportPage2 = document.createElement('div');
+    reportPage2.className = reportPage1.className + ' pr-page2';
+    const pageStyle = reportPage1.getAttribute('style');
+    if (pageStyle) reportPage2.setAttribute('style', pageStyle);
+
+    let moving = internalPageBreak.nextSibling;
+    while (moving){
+      const next = moving.nextSibling;
+      reportPage2.appendChild(moving);
+      moving = next;
+    }
+    internalPageBreak.remove();
+
+    const separator = document.createElement('div');
+    separator.className = 'pr-page-break';
+    reportPage1.after(separator, reportPage2);
+  }
 
   // redraw clean, print-safe versions of the diagrams into the report canvases
   const pageW = 680;
