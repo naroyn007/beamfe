@@ -1596,6 +1596,26 @@ function watchProjectDetailsForAutosave(){
   });
 }
 
+function syncPrimaryBeamUi(){
+  const toggle = document.getElementById('primaryBeamToggle');
+  const wrap = document.getElementById('primaryBeamCapacityWrap');
+  if (!toggle || !wrap) return;
+  wrap.style.display = toggle.checked ? '' : 'none';
+}
+
+const primaryBeamToggleEl = document.getElementById('primaryBeamToggle');
+const legCapacityEl = document.getElementById('legCapacity');
+if (primaryBeamToggleEl){
+  primaryBeamToggleEl.addEventListener('change', ()=>{
+    syncPrimaryBeamUi();
+    runAnalysis();
+  });
+}
+if (legCapacityEl){
+  legCapacityEl.addEventListener('input', ()=> runAnalysis());
+}
+syncPrimaryBeamUi();
+
 function ensureAnalysisStore(){
   if (!analyses.length){
     analyses = [defaultAnalysisSnapshot()];
