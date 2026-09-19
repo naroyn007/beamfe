@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BEAM// Finite Beam Analysis</title>
-<script src="https://cdnjs.cloudulare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
   :root{
@@ -692,19 +692,6 @@
             <li><b>Right-click</b> the schematic for a summary table of any category</li>
           </ul>
           <div class="field-note" style="margin-top:2px;">TIE-DOWN = anchored, resists uplift &amp; bearing &middot; FREE = bearing only (post/wall, no anchorage — flags if net reaction is uplift)</div>
-        </div>
-
-        <div class="stack">
-          <div class="section-title">Beam Classification</div>
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-            <input type="checkbox" id="primaryBeamToggle" style="width:auto;margin:0;">
-            <span><b>Primary Beam</b> — reactions transfer directly to proprietary equipment legs</span>
-          </label>
-          <div id="primaryBeamCapacityWrap" style="display:none;margin-top:8px;">
-            <label>Proprietary Equipment Leg Capacity (kN)</label>
-            <input type="number" id="legCapacity" min="0" step="0.1" placeholder="Enter tested/proprietary leg capacity">
-            <div class="field-note">Used only as a direct compression comparison against each primary-beam bearing reaction. Enter the manufacturer's/proprietary equipment capacity applicable to the leg configuration.</div>
-          </div>
         </div>
 
         <div class="stack">
@@ -1477,8 +1464,6 @@ function defaultAnalysisSnapshot(){
     allowFbHog:'5',
     allowFv:'20',
     deflLimit:'270',
-    primaryBeam:false,
-    legCapacity:'',
     supports:deepClone(supports),
     pointLoads:deepClone(pointLoads),
     udls:deepClone(udls),
@@ -1529,8 +1514,6 @@ function syncCurrentAnalysisToStore(){
   a.allowFbHog = document.getElementById('allowFbHog')?.value || '';
   a.allowFv = document.getElementById('allowFv')?.value || '';
   a.deflLimit = document.getElementById('deflLimit')?.value || '';
-  a.primaryBeam = !!document.getElementById('primaryBeamToggle')?.checked;
-  a.legCapacity = document.getElementById('legCapacity')?.value || '';
   a.supports = deepClone(supports);
   a.pointLoads = deepClone(pointLoads);
   a.udls = deepClone(udls);
@@ -1559,10 +1542,6 @@ function loadAnalysisToDom(index){
   setFieldVal('allowFbHog', a.allowFbHog);
   setFieldVal('allowFv', a.allowFv);
   setFieldVal('deflLimit', a.deflLimit);
-  const primaryToggle = document.getElementById('primaryBeamToggle');
-  if (primaryToggle) primaryToggle.checked = !!a.primaryBeam;
-  setFieldVal('legCapacity', a.legCapacity || '');
-  syncPrimaryBeamUi();
   renderAnalysisPicker();
   return true;
 }
@@ -1595,26 +1574,6 @@ function watchProjectDetailsForAutosave(){
     });
   });
 }
-
-function syncPrimaryBeamUi(){
-  const toggle = document.getElementById('primaryBeamToggle');
-  const wrap = document.getElementById('primaryBeamCapacityWrap');
-  if (!toggle || !wrap) return;
-  wrap.style.display = toggle.checked ? '' : 'none';
-}
-
-const primaryBeamToggleEl = document.getElementById('primaryBeamToggle');
-const legCapacityEl = document.getElementById('legCapacity');
-if (primaryBeamToggleEl){
-  primaryBeamToggleEl.addEventListener('change', ()=>{
-    syncPrimaryBeamUi();
-    runAnalysis();
-  });
-}
-if (legCapacityEl){
-  legCapacityEl.addEventListener('input', ()=> runAnalysis());
-}
-syncPrimaryBeamUi();
 
 function ensureAnalysisStore(){
   if (!analyses.length){
@@ -1986,8 +1945,6 @@ function runAnalysis(afterDraw){
   const FbHog = parseFloat(document.getElementById('allowFbHog').value)||0; // allowable HOGGING moment capacity, kN·m
   const Fv = parseFloat(document.getElementById('allowFv').value)||0; // allowable shear FORCE capacity, kN
   const deflDenom = parseFloat(document.getElementById('deflLimit').value)||300;
-  const primaryBeam = !!document.getElementById('primaryBeamToggle')?.checked;
-  const legCapacity = parseFloat(document.getElementById('legCapacity')?.value)||0;
 
   const results = document.getElementById('results');
 
@@ -2088,7 +2045,6 @@ function runAnalysis(afterDraw){
     Msag, MsagAtX, FbSag, bendingSagPass,
     Mhog, MhogAtX, FbHog, bendingHogPass,
     bendingPass,
-    primaryBeam, legCapacity,
     fv, Fv, shearPass,
     deflAllowIn, deflDenom, deflPass, deflRatioActual, wasAdjusted,
     unstableSupports
@@ -2171,10 +2127,9 @@ function renderResults(R, afterDraw){
     <div class="panel">
       <div class="panel-head">Reactions &amp; Support Comparison</div>
       <div class="panel-body" style="padding-top:4px;">
-        ${R.primaryBeam ? `<div class="field-note" style="margin-bottom:6px;"><b>Primary Beam — Equipment Leg Check:</b> bearing reactions are transferred directly to the proprietary equipment legs. Leg capacity: <b>${R.legCapacity>0 ? fmt(R.legCapacity,2)+' kN' : 'not entered'}</b>.</div>` : ''}
         <table>
-          <thead><tr><th>Support</th><th>Position (m)</th><th>Type</th><th>Reaction (kN)</th><th>Direction</th>${R.primaryBeam ? '<th>Leg Capacity</th><th>Utilization</th>' : ''}<th>Status</th></tr></thead>
-          <tbody>${reactionRows(R.reactions, R.primaryBeam, R.legCapacity)}</tbody>
+          <thead><tr><th>Support</th><th>Position (m)</th><th>Type</th><th>Reaction (kN)</th><th>Direction</th><th>Status</th></tr></thead>
+          <tbody>${reactionRows(R.reactions)}</tbody>
         </table>
       </div>
     </div>
@@ -2308,7 +2263,7 @@ function summaryCell(label, sym, val, unit, sub, pass){
   </div>`;
 }
 
-function reactionRows(reactions, primaryBeam=false, legCapacity=0){
+function reactionRows(reactions){
   return reactions.map((r,i)=>{
     if (r.liftedOff){
       return `<tr>
@@ -2317,22 +2272,13 @@ function reactionRows(reactions, primaryBeam=false, legCapacity=0){
         <td>Free</td>
         <td>0.00</td>
         <td>Separated — no bearing contact</td>
-        ${primaryBeam ? '<td>—</td><td>—</td>' : ''}
         <td><span class="tag tag-warn">LIFTED OFF — BEAM UPLIFTS HERE</span></td>
       </tr>`;
     }
     const isUplift = r.R < -1e-6;
     const dir = r.R>=0 ? 'Bearing (down on support)' : 'Uplift (up on support)';
-    const legLoad = !isUplift && r.R>1e-9 ? r.R : 0;
-    const legUtil = primaryBeam && legCapacity>0 && legLoad>0 ? legLoad/legCapacity : null;
     let status;
-    if (primaryBeam && legLoad>0 && legUtil!=null){
-      status = legUtil<=1
-        ? '<span class="tag tag-pass">OK — LEG CAPACITY</span>'
-        : '<span class="tag tag-fail">FAIL — LEG CAPACITY</span>';
-    } else if (primaryBeam && legLoad>0 && legCapacity<=0){
-      status = '<span class="tag tag-neutral">LEG CAPACITY NOT ENTERED</span>';
-    } else if (r.type==='free'){
+    if (r.type==='free'){
       status = isUplift ? '<span class="tag tag-fail">UPLIFT — NEEDS TIE-DOWN</span>' : '<span class="tag tag-pass">OK — BEARING ONLY</span>';
     } else {
       status = isUplift ? '<span class="tag tag-warn">TIE-DOWN RESISTING '+fmt(Math.abs(r.R),2)+' kN UPLIFT</span>' : '<span class="tag tag-pass">OK</span>';
@@ -2343,11 +2289,11 @@ function reactionRows(reactions, primaryBeam=false, legCapacity=0){
       <td>${r.type==='tie'?'Tie-down':'Free'}</td>
       <td>${fmt(Math.abs(r.R),2)}</td>
       <td>${dir}</td>
-      ${primaryBeam ? `<td>${legCapacity>0 ? fmt(legCapacity,2)+' kN' : '—'}</td><td>${legUtil!=null ? fmt(legUtil*100,1)+'%' : '—'}</td>` : ''}
       <td>${status}</td>
     </tr>`;
   }).join('');
 }
+
 /* ---- Canvas: beam schematic ---- */
 function setupCanvas(id, hCss, opts){
   const o = opts||{};
@@ -3728,32 +3674,22 @@ function buildPrintReportSingle(R, meta){
       ${(!R.pointLoads.length && !R.udls.length) ? '<div class="field-note">No loads defined for this analysis.</div>' : ''}
 
       <div class="pr-section-title">4. Reactions</div>
-      ${{R.primaryBeam ? \`<div class="field-note" style="margin-bottom:6px;"><b>Primary Beam — Equipment Leg Check:</b> bearing reactions transfer directly to proprietary equipment legs. Leg capacity: <b>${{R.legCapacity>0 ? fmt(R.legCapacity,2)+' kN' : 'not entered'}</b>.</div>\` : ''}
       <table class="pr-table">
-        <thead><tr><th>Support</th><th>Position</th><th>Type</th><th>Reaction</th>${{R.primaryBeam ? '<th>Leg Capacity</th><th>Utilization</th>' : ''}<th>Status</th></tr></thead>
-        <tbody>${{R.reactions.map((r,i)=>{
+        <thead><tr><th>Support</th><th>Position</th><th>Type</th><th>Reaction</th><th>Status</th></tr></thead>
+        <tbody>${R.reactions.map((r,i)=>{
           if (r.liftedOff){
-            return \`<tr><td>S${{i+1}</td><td>${{fmt(r.pos,2)} m</td><td>Free</td><td>0.00 kN</td>
-              ${{R.primaryBeam ? '<td>—</td><td>—</td>' : ''}
-              <td><span class="pr-tag pr-tag-warn">LIFTED OFF — NO BEARING</span></td></tr>\`;
+            return `<tr><td>S${i+1}</td><td>${fmt(r.pos,2)} m</td><td>Free</td><td>0.00 kN</td>
+              <td><span class="pr-tag pr-tag-warn">LIFTED OFF — NO BEARING</span></td></tr>`;
           }
           const isUplift = r.R < -1e-6;
-          const legLoad = !isUplift && r.R>1e-9 ? r.R : 0;
-          const legUtil = R.primaryBeam && R.legCapacity>0 && legLoad>0 ? legLoad/R.legCapacity : null;
           let status;
-          if (R.primaryBeam && legLoad>0 && legUtil!=null){
-            status = legUtil<=1 ? '<span class="pr-tag pr-tag-pass">OK — LEG CAPACITY</span>' : '<span class="pr-tag pr-tag-fail">FAIL — LEG CAPACITY</span>';
-          } else if (R.primaryBeam && legLoad>0 && R.legCapacity<=0){
-            status = '<span class="pr-tag pr-tag-warn">LEG CAPACITY NOT ENTERED</span>';
-          } else if (r.type==='free'){
+          if (r.type==='free'){
             status = isUplift ? '<span class="pr-tag pr-tag-fail">UPLIFT — NEEDS TIE-DOWN</span>' : '<span class="pr-tag pr-tag-pass">OK — BEARING ONLY</span>';
           } else {
             status = isUplift ? '<span class="pr-tag pr-tag-warn">TIE-DOWN, '+fmt(Math.abs(r.R),2)+' kN UPLIFT</span>' : '<span class="pr-tag pr-tag-pass">OK</span>';
           }
-          return \`<tr><td>S${{i+1}</td><td>${{fmt(r.pos,2)} m</td><td>${{r.type==='tie'?'Tie-down':'Free'}</td>
-            <td>${{fmt(Math.abs(r.R),2)} kN</td>
-            ${{R.primaryBeam ? \`<td>${{R.legCapacity>0 ? fmt(R.legCapacity,2)+' kN' : '—'}</td><td>${{legUtil!=null ? fmt(legUtil*100,1)+'%' : '—'}</td>\` : ''}
-            <td>${{status}</td></tr>\`;
+          return `<tr><td>S${i+1}</td><td>${fmt(r.pos,2)} m</td><td>${r.type==='tie'?'Tie-down':'Free'}</td>
+            <td>${fmt(Math.abs(r.R),2)} kN</td><td>${status}</td></tr>`;
         }).join('')}</tbody>
       </table>
 
@@ -3941,7 +3877,6 @@ function serializeModel(){
       beamLength:a.beamLength,tribWidth:a.tribWidth,udlModeGlobal:a.udlModeGlobal,
       sectionName:a.sectionName,propE:a.propE,propI:a.propI,
       allowFbSag:a.allowFbSag,allowFbHog:a.allowFbHog,allowFv:a.allowFv,deflLimit:a.deflLimit,
-      primaryBeam:!!a.primaryBeam,legCapacity:a.legCapacity||'',
       supports:deepClone(a.supports),pointLoads:deepClone(a.pointLoads),udls:deepClone(a.udls)
     })),
     // Legacy active-model fields kept so older readers can still open the saved JSON.
@@ -3957,8 +3892,6 @@ function serializeModel(){
     allowFbHog:active?.allowFbHog ?? document.getElementById('allowFbHog')?.value ?? '',
     allowFv:active?.allowFv ?? document.getElementById('allowFv')?.value ?? '',
     deflLimit:active?.deflLimit ?? document.getElementById('deflLimit')?.value ?? '',
-    primaryBeam:!!(active?.primaryBeam ?? document.getElementById('primaryBeamToggle')?.checked),
-    legCapacity:active?.legCapacity ?? document.getElementById('legCapacity')?.value ?? '',
     supports:deepClone(active?.supports || supports),
     pointLoads:deepClone(active?.pointLoads || pointLoads),
     udls:deepClone(active?.udls || udls)
@@ -4002,8 +3935,6 @@ function applyModel(data){
       allowFbHog:String(a.allowFbHog!=null?a.allowFbHog:(a.allowFb!=null?a.allowFb:'5')),
       allowFv:String(a.allowFv!=null?a.allowFv:'20'),
       deflLimit:String(a.deflLimit!=null?a.deflLimit:'270'),
-      primaryBeam:!!a.primaryBeam,
-      legCapacity:String(a.legCapacity!=null?a.legCapacity:''),
       supports:Array.isArray(a.supports)?a.supports.map(s=>({pos:parseFloat(s.pos)||0,type:s.type==='free'?'free':'tie'})):[],
       pointLoads:Array.isArray(a.pointLoads)?a.pointLoads.map(p=>({pos:parseFloat(p.pos)||0,mag:parseFloat(p.mag)||0})):[],
       udls:Array.isArray(a.udls)?a.udls.map(u=>({
@@ -4025,7 +3956,6 @@ function applyModel(data){
         sectionName:data.sectionName,propE:data.propE,propI:data.propI,
         allowFbSag:data.allowFbSag,allowFbHog:data.allowFbHog,allowFb:data.allowFb,
         allowFv:data.allowFv,deflLimit:data.deflLimit,
-        primaryBeam:data.primaryBeam,legCapacity:data.legCapacity,
         supports:data.supports,pointLoads:data.pointLoads,udls:data.udls
       },0)];
       currentAnalysisIndex=0;
