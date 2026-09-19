@@ -369,6 +369,45 @@ Builds a formwork concrete-pressure UDL (or pair of UDLs) from four inputs: **Un
 
 ---
 
+## Primary Beam — Equipment Leg Capacity Check (2026-09-19)
+
+**Status: Implemented in `development`.**
+
+### What was added
+
+- New per-analysis **Beam Classification** control:
+  - **Primary Beam** toggle.
+  - When enabled, the user can enter **Proprietary Equipment Leg Capacity (kN)**.
+- The setting is stored with each analysis and survives:
+  - analysis switching,
+  - Save/Load,
+  - autosave,
+  - legacy model migration (older models default to Secondary Beam / off).
+- When Primary Beam is enabled, the Reactions panel adds:
+  - **Leg Capacity**
+  - **Utilization**
+  - per-support **OK — LEG CAPACITY** / **FAIL — LEG CAPACITY** status.
+- The comparison is direct:
+  - bearing reaction = compression load transferred into the equipment leg;
+  - utilization = bearing reaction / proprietary leg capacity;
+  - **≤ 100% = OK**, **> 100% = FAIL**.
+- If Primary Beam is enabled but no leg capacity is entered, the reaction status reports **LEG CAPACITY NOT ENTERED** rather than assuming a capacity.
+- Uplift reactions are **not** compared against the compression leg capacity. Existing Free/Tie-down uplift handling remains unchanged.
+- The PDF **Section 4 — Reactions** uses the same Primary Beam / equipment-leg comparison and records the entered proprietary leg capacity.
+
+### Engineering intent
+
+The Primary Beam classification explicitly identifies the load path assumed by this check: the beam support reaction is treated as the load transferred directly into the proprietary equipment leg.
+
+The leg capacity is a **user/manufacturer/proprietary input**. BEAM//FE does not calculate or derive that equipment capacity.
+
+This check is intentionally a direct reaction-versus-capacity comparison and should not be interpreted as a new FE support condition or as a calculation of the proprietary equipment's internal leg resistance.
+
+**Development only — `main` was not modified.**
+
+
+---
+
 ## Still Open
 
 - **Company Branding backend scope decision** (see the original roadmap's point 5) has been effectively answered by implementation: it's **per-user** (`user_settings`, keyed to `auth.uid()`), not global/fixed. Confirmed and built, not still pending.
