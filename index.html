@@ -18,6 +18,7 @@
     --amber:#F2A93B;
     --green:#5FCB8D;
     --red:#EF6B62;
+    --violet:#C792EA;
     --paper:#EAF2FB;
     --mono:'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
     --head:'Barlow Condensed', 'Arial Narrow', sans-serif;
@@ -1499,7 +1500,8 @@ function renderResults(R, afterDraw){
       <div class="panel-head">Beam Schematic
         <span class="legend">
           <span><span class="swatch" style="background:var(--cyan);"></span>Beam</span>
-          <span><span class="swatch" style="background:var(--amber);"></span>Point Load / Tie-down</span>
+          <span><span class="swatch" style="background:var(--violet);"></span>Point Load</span>
+          <span><span class="swatch" style="background:var(--amber);"></span>Tie-down</span>
           <span><span class="swatch" style="background:var(--blue-line);"></span>Distributed Load / Free Support</span>
           <span><span class="swatch" style="background:var(--red);"></span>Lifted Off (Uplift)</span>
         </span>
@@ -1721,7 +1723,7 @@ function setupCanvas(id, hCss, opts){
 
 /* Redrawn-for-print color palette: dark ink on white, no glow/alpha tricks */
 const PRINT_THEME = {
-  beam:'#1f2937', pointLoad:'#b45309', udlLine:'#1d4ed8', udlText:'#1d4ed8',
+  beam:'#1f2937', pointLoad:'#7c3aed', udlLine:'#1d4ed8', udlText:'#1d4ed8',
   tieFill:'#b45309', tieBolt:'#ffffff', freeStroke:'#1d4ed8', freeDash:'#93c5fd',
   liftedStroke:'#b91c1c', liftedDash:'#fca5a5', dim:'#9ca3af', dimText:'#4b5563',
   hatching:'#9ca3af', labelText:'#111827', grid:'#e5e7eb', zero:'#9ca3af'
@@ -1737,7 +1739,7 @@ let hoveredItem = null;   // {type, index} — the item currently under the curs
 function drawSchematic(R, canvasId, printMode, canvasOpts){
   canvasId = canvasId || 'cvSchematic';
   const T = printMode ? PRINT_THEME : {
-    beam:'#6FD6E8', pointLoad:'#F2A93B', udlLine:'rgba(191,220,250,0.8)', udlText:'#BFDCFA',
+    beam:'#6FD6E8', pointLoad:'#C792EA', udlLine:'rgba(191,220,250,0.8)', udlText:'#BFDCFA',
     tieFill:'#F2A93B', tieBolt:'#0A1F3A', freeStroke:'#6FD6E8', freeDash:'rgba(111,214,232,0.5)',
     liftedStroke:'#EF6B62', liftedDash:'rgba(239,107,98,0.5)', dim:'rgba(191,220,250,0.35)',
     dimText:'rgba(191,220,250,0.6)', hatching:'rgba(191,220,250,0.5)', labelText:'#BFDCFA'
@@ -2135,6 +2137,20 @@ document.addEventListener('click', (e)=>{
 document.addEventListener('keydown', (e)=>{
   if (e.key==='Escape') closeAllPopups();
 });
+
+// Every number field across the app (beam length, trib width, section properties, allowables,
+// the point-load/support/UDL edit popup, and the right-click summary tables) selects its whole
+// value the moment it gets focus, whether by click or Tab — so typing a new number overwrites
+// it immediately instead of needing a manual backspace/clear first. Capture phase because
+// 'focus' doesn't bubble; the select() itself is deferred a tick because some browsers (Chrome
+// in particular) collapse the selection right after a click-triggered focus, so calling it on
+// the very next frame instead of synchronously in the handler makes it stick either way.
+document.addEventListener('focus', (e)=>{
+  const el = e.target;
+  if (el && el.tagName==='INPUT' && el.type==='number'){
+    setTimeout(()=> el.select(), 0);
+  }
+}, true);
 
 /* ---- Floating edit popup ---- */
 function openEditorFor(type, index, isNew, clientX, clientY){
