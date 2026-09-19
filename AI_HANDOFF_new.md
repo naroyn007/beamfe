@@ -240,58 +240,29 @@ All magnitude-type drags (`udl-mag`, `udl-scale`, `pointload-mag`) share the sam
 - **Number inputs auto-select on focus** app-wide (`document.addEventListener('focus', ..., true)` + deferred `.select()` to survive Chrome's click-collapses-selection quirk) — typing immediately overwrites instead of requiring backspace first.
 - **Login screen bug fixed**: `input[type=password]` and `input[type=date]` were never included in either CSS input rule (`input[type=number], input[type=text], select{...}` and the `.license-box`-specific one) — password field rendered as an unstyled browser default, visually mismatched from the email field above it. Both now included in both rules.
 
-### Current Project Milestone — PDF Report + Corporate Styling (2026-09-19)
+### Current Project Milestone — Project-Scoped Multi-Analysis COMPLETE (2026-09-19)
 
-### Next Horizon — Project-Scoped Multi-Analysis (2026-09-19)
-
-**Status: Development testing**
-
-Implemented in `development`:
-- Project Details are now shared across the project: Project Name, Designed By, Checked By, and Date.
-- Added an **Analysis** dropdown plus **+ New Analysis** inside the Project Details area.
-- Each analysis has its own Analysis Name and Beam / Member ID.
-- Each analysis independently retains its beam length, tributary width, section properties, allowables, supports, point loads, UDLs, and UDL mode.
-- Switching analyses saves the current model and loads the selected analysis without re-entering shared project details.
-- New analyses start as a copy of the current analysis, then receive a new Analysis N / B-N identity for editing.
-- Save/Load/autosave format upgraded to version 2 with an `analyses[]` structure and backward-compatible migration from the previous single-analysis JSON format.
-- PDF generation now gathers and validates every analysis in the project and compiles them into one consolidated report, with shared project information synchronized across report pages.
-- Each analysis retains the existing two-sheet report structure; page numbering is calculated across the complete consolidated report.
-- PDF section-property values are bound to the correct analysis rather than the currently visible UI analysis.
-- Invalid analyses are reported and excluded from the consolidated PDF instead of inheriting a previous analysis result.
-- **PDF pagination regression fixed:** the standalone Analysis Name row was adding vertical height and could cause Section 6 to jump unexpectedly. Analysis Name is now included inside the existing report header, preserving the intended two-sheet layout.
-- Full JavaScript syntax check passes after the fix.
-- **PDF sheet-structure fix:** each analysis is now split into two real `.pr-page` containers (page 1 and page 2), with explicit page breaks between sheets and between analyses. This prevents the browser from treating an entire analysis as one flowing container and creating an unintended third sheet.
-- Follow-up pagination fix: after splitting the sheets into real page containers, the old compact page-2 CSS selectors no longer matched. Restored the compact spacing directly on `.pr-page2` (header, info grid, section spacing, diagrams, captions, and footer) to prevent page-2 overflow.
-- **Restore/autosave project details fix:** Project Name, Designed By, Checked By, and Date now trigger autosave directly when edited, so Restore captures the latest shared project details even when no analysis action was run afterward. Restore also explicitly writes/clears those fields from the saved project record.
-
-**Testing focus:**
-- Create Analysis 1 and Analysis 2 under the same project; change supports/loads independently and switch back and forth.
-- Confirm Project Name / Designed By / Checked By / Date remain unchanged across every analysis.
-- Save, reload, and confirm all analyses return correctly.
-- Generate a PDF with 2–3 analyses and confirm each analysis has its own Beam / Member ID, model data, results, and diagrams.
-- Confirm no third-page behavior is introduced inside an individual analysis's two-sheet layout.
-
-**Status: Development testing**
+**Status: Development milestone complete — ready for production promotion**
 
 Completed in `development`:
-- UDL top-line drag corrected so it changes only UDL magnitude and does not modify point-load magnitude.
-- PDF report refined to target a strict **2-page maximum**.
-- Section 6 (Code Check Summary) now moves to page 2 with Section 7 when the model becomes too dense, instead of allowing a third page.
-- Page 2 diagrams restored to a larger, more useful size after earlier over-compression.
-- PDF table column headers use full-cell maroon fills with white text.
-- Model Summary headers are forced to one line, including larger support counts such as 7 supports.
-- PDF report title rule uses the same maroon accent.
-- Added a **PDF Accent Color** picker on the development UI. It affects PDF export only and automatically selects black/white header text for contrast.
-- Normal engineering diagram colors remain separate from the PDF branding accent.
+- Project-level shared details: Project Name, Designed By, Checked By, and Date.
+- Analysis dropdown with **+ New Analysis**.
+- Each analysis independently stores its Analysis Name, Beam / Member ID, beam data, section properties, allowables, supports, point loads, UDLs, and UDL mode.
+- Switching analyses preserves shared project information and each analysis's own model data.
+- Save/Load/autosave upgraded to version 2 with backward-compatible migration.
+- Restore/autosave now captures and restores the shared project details reliably.
+- PDF generation includes all analyses in one consolidated report with per-analysis data and page numbering.
+- Each analysis has its own two-sheet report structure.
+- PDF Section 6 pagination logic and sheet-container handling were corrected during multi-analysis development.
+- PDF table headers, title accent, and PDF-only accent color picker are retained.
+- PDF header simplified to show the analysis name directly (for example, **Analysis 1**) without the redundant "Analysis:" prefix.
+- Full JavaScript syntax check passes after the final development changes.
+- `main` has not been modified.
 
-Current behavior / test focus:
-- `main` is not being changed as part of this PDF/UI development work.
-- Test PDF export with 6–10 supports and multiple point/UDL loadings.
-- Confirm Section 6 stays on page 1 for smaller models and moves cleanly to page 2 for dense models, while the complete report remains 2 pages.
-- Confirm the selected PDF Accent Color appears as the full table-header fill and title rule in the printed/PDF output.
-- Confirm Model Summary column headers remain one line.
+**Final development test notes:**
+- The browser/printer may still determine final physical pagination depending on print settings; the working printer-setting adjustment is accepted for this milestone.
+- Multi-analysis behavior, Restore/autosave, and PDF generation are ready for promotion from `development`.
 
-Next milestone after this test:
-- Finalize the PDF corporate color behavior and promote the tested `development` changes to `main` only after visual verification.
+### Next Horizon — Production Promotion
 
-**Repository write status:** GitHub connector writes to `development` are currently working (latest tested commit flow succeeds).
+Promote the tested `development` branch to production/`main` when ready. Do not make additional changes to `main` as part of this milestone.
