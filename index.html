@@ -104,6 +104,18 @@
     padding:7px 10px;margin-bottom:8px;
   }
 
+  .unstable-banner{
+    max-width:1320px;margin:0 auto 18px;background:linear-gradient(180deg, var(--navy-panel), var(--navy-mid));
+    border:1px solid var(--red);border-radius:2px;padding:12px 16px;
+  }
+  .unstable-banner .ub-title{
+    font-family:var(--head);font-weight:700;letter-spacing:1.5px;text-transform:uppercase;font-size:13px;
+    color:var(--red);margin-bottom:6px;
+  }
+  .unstable-banner ul{margin:0;padding-left:18px;}
+  .unstable-banner li{font-size:12.5px;color:var(--paper);line-height:1.7;}
+  .unstable-banner li b{color:var(--red);}
+
   .list-item{
     border:1px dashed var(--blue-line-dim);padding:10px;border-radius:2px;position:relative;
     background:rgba(255,255,255,0.015);
@@ -337,6 +349,11 @@
   .pr-diagrams{display:flex;flex-direction:column;gap:14px;margin-bottom:6px;}
   .pr-diagram-cap{font-size:10px;color:#6b7280;text-align:center;margin-top:2px;}
   .pr-footer{border-top:1px solid #d1d5db;padding-top:10px;margin-top:26px;font-size:9.5px;color:#9ca3af;line-height:1.6;}
+  .pr-unstable{border:1.5px solid #991b1b;background:#fef2f2;border-radius:3px;padding:10px 14px;margin-bottom:16px;}
+  .pr-unstable-title{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-weight:700;letter-spacing:1px;
+    font-size:12px;color:#991b1b;text-transform:uppercase;margin-bottom:4px;}
+  .pr-unstable ul{margin:0;padding-left:16px;}
+  .pr-unstable li{font-size:10.5px;color:#111827;line-height:1.6;}
   .pr-sig{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:26px;}
   .pr-sig div{border-top:1px solid #111827;padding-top:4px;font-size:10px;color:#6b7280;}
   .pr-page-break{height:0;}
@@ -471,6 +488,7 @@
   </header>
 
   <div id="autosaveBanner"></div>
+  <div id="unstableBanner"></div>
 
   <div class="grid">
 
@@ -1423,6 +1441,15 @@ function runAnalysis(afterDraw){
   const shearPass = Fv>0 ? fv<=Fv : null;
   const deflPass = Dabs<=deflAllowIn;
 
+  // A Free support carrying a net uplift reaction is not a resolved solution — Free means
+  // "bearing only, no anchorage," so nothing in the physical model is actually holding that
+  // point down yet. solveWithLiftoff still reports the demand (so the number is useful for
+  // sizing a tie-down), but the configuration itself is unstable until that support is either
+  // switched to Tie-down or the load path is changed so it no longer wants to lift.
+  const unstableSupports = reactions
+    .map((r,i)=>({...r, index:i}))
+    .filter(r => r.type==='free' && !r.liftedOff && r.R < -1e-6);
+
   renderResults({
     L, supports, pointLoads, udls, trib, reactions, diag, deflSamples,
     Vabs, VabsAtX, Mabs, MabsAtX, Dabs, DabsX,
@@ -1430,13 +1457,16 @@ function runAnalysis(afterDraw){
     Mhog, MhogAtX, FbHog, bendingHogPass,
     bendingPass,
     fv, Fv, shearPass,
-    deflAllowIn, deflDenom, deflPass, deflRatioActual, wasAdjusted
+    deflAllowIn, deflDenom, deflPass, deflRatioActual, wasAdjusted,
+    unstableSupports
   }, afterDraw);
 
   if (suppressAutosaveOnce){ suppressAutosaveOnce = false; } else { saveAutosave(); }
 }
 
 function errPanel(msg){
+  const ub = document.getElementById('unstableBanner');
+  if (ub) ub.innerHTML = '';
   return `<div class="panel"><div class="panel-head">Model Input Error</div><div class="empty-msg" style="color:var(--red);">${msg}</div></div>`;
 }
 
@@ -1447,8 +1477,22 @@ function fmt(n, d=1){
 }
 
 let lastResults = null;
+function renderUnstableBanner(R){
+  const el = document.getElementById('unstableBanner');
+  if (!el) return;
+  if (!R.unstableSupports || !R.unstableSupports.length){ el.innerHTML = ''; return; }
+  const items = R.unstableSupports.map(r =>
+    `<li>Support S${r.index+1} (@ ${fmt(r.pos,2)} m) needs <b>${fmt(Math.abs(r.R),2)} kN</b> of tie-down capacity to resist uplift — it's currently set to <b>Free</b>, which can't hold it down. Change it to <b>Tie-down</b> once anchorage capable of that load is in place.</li>`
+  ).join('');
+  el.innerHTML = `
+    <div class="unstable-banner">
+      <div class="ub-title">⚠ Unstable — tie-down required</div>
+      <ul>${items}</ul>
+    </div>`;
+}
 function renderResults(R, afterDraw){
   lastResults = R;
+  renderUnstableBanner(R);
   const results = document.getElementById('results');
   results.innerHTML = `
     <div class="panel">
@@ -1788,6 +1832,29 @@ function drawSchematic(R, canvasId, printMode, canvasOpts){
       // gap marks between beam and support = no longer bearing
       ctx.strokeStyle = T.liftedStroke;
       ctx.beginPath(); ctx.moveTo(x-3,baseY); ctx.lineTo(x-3,baseY+5); ctx.moveTo(x+3,baseY); ctx.lineTo(x+3,baseY+5); ctx.stroke();
+    } else if (uplift){
+      // FREE support carrying net uplift with no anchorage to resist it: red, dashed,
+      // visually broken — distinct from both a normal stable Free support (hollow/cyan)
+      // and a fully lifted-off one (open gap). This is the "needs tie-down now" state.
+      ctx.strokeStyle = T.liftedStroke; ctx.lineWidth = 1.5; ctx.setLineDash([3,3]);
+      ctx.beginPath();
+      ctx.moveTo(x, baseY); ctx.lineTo(x-9, baseY+15); ctx.lineTo(x+9, baseY+15); ctx.closePath();
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // roller circles, drawn hollow/red instead of filled/cyan, to keep the "Free = bearing
+      // only" shape recognizable while flagging that it's not currently a valid solution
+      ctx.strokeStyle = T.liftedStroke; ctx.lineWidth = 1;
+      [x-5, x, x+5].forEach(cx=>{
+        ctx.beginPath(); ctx.arc(cx, baseY+18.5, 2.4, 0, Math.PI*2); ctx.stroke();
+      });
+      ctx.strokeStyle = T.liftedDash; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+      ctx.beginPath(); ctx.moveTo(x-13,baseY+21); ctx.lineTo(x+13,baseY+21); ctx.stroke();
+      ctx.setLineDash([]);
+      // upward-pointing warning arrow above the support, echoing the uplift arrow used on
+      // a tie-down support so the two "carrying uplift" states read the same way
+      ctx.strokeStyle = T.liftedStroke; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x, baseY+15); ctx.lineTo(x, baseY+3); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x,baseY+3); ctx.lineTo(x-3,baseY+8); ctx.lineTo(x+3,baseY+8); ctx.closePath(); ctx.fill();
     } else {
       // FREE (bearing-only, unanchored): hollow triangle resting on a roller — no ground hatching
       ctx.strokeStyle = T.freeStroke; ctx.lineWidth = 1.5;
@@ -1805,9 +1872,9 @@ function drawSchematic(R, canvasId, printMode, canvasOpts){
       ctx.setLineDash([]);
     }
 
-    ctx.fillStyle = liftedOff ? T.liftedStroke : T.labelText;
+    ctx.fillStyle = (liftedOff || uplift) ? T.liftedStroke : T.labelText;
     ctx.font='10px IBM Plex Mono';
-    const labelText = liftedOff ? 'LIFTED @'+fmt(s.pos,1)+'m' : (s.type==='free'?'FREE':'TIE')+' @'+fmt(s.pos,1)+'m';
+    const labelText = liftedOff ? 'LIFTED @'+fmt(s.pos,1)+'m' : uplift ? 'FREE ⚠ @'+fmt(s.pos,1)+'m' : (s.type==='free'?'FREE':'TIE')+' @'+fmt(s.pos,1)+'m';
     ctx.fillText(labelText, x-24, baseY+38);
     if (!printMode) hitRegions.push({type:'support', index:i, x1:x-16, y1:baseY-2, x2:x+16, y2:baseY+42});
   });
@@ -2531,10 +2598,20 @@ function buildPrintReport(R){
       </table>`;
   }
 
+  const unstableHtml = (R.unstableSupports && R.unstableSupports.length)
+    ? `<div class="pr-unstable">
+         <div class="pr-unstable-title">⚠ UNSTABLE — TIE-DOWN REQUIRED</div>
+         <ul>${R.unstableSupports.map(r=>
+           `<li>Support S${r.index+1} (@ ${fmt(r.pos,2)} m) needs ${fmt(Math.abs(r.R),2)} kN of tie-down capacity to resist uplift — currently set to Free, which cannot resist it.</li>`
+         ).join('')}</ul>
+       </div>`
+    : '';
+
   root.innerHTML = `
     <div class="pr-page">
       <div class="pr-watermark">${watermarkText ? esc(watermarkText) : ''}</div>
       ${pageHeaderHtml('1 of 2')}
+      ${unstableHtml}
 
       <div class="pr-section-title">1. Beam schematic</div>
       <canvas id="printSchematic" height="170"></canvas>
