@@ -138,6 +138,14 @@
     color:var(--blue-line);margin:2px 0 2px 0;border-bottom:1px solid var(--blue-line-dim);padding-bottom:6px;
     display:flex;justify-content:space-between;align-items:center;gap:8px;
   }
+  .analysis-manager{
+    border:1px dashed var(--blue-line-dim);padding:10px;border-radius:2px;
+    background:rgba(255,255,255,0.015);
+  }
+  .analysis-manager-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px;}
+  .analysis-manager-head label{margin:0;}
+  .analysis-manager select{background:var(--navy-deep);}
+
   .import-btn{
     background:none;border:1px solid var(--blue-line-dim);color:var(--blue-line);
     padding:4px 8px;font-family:var(--mono);font-size:10.5px;letter-spacing:0.3px;
@@ -159,6 +167,12 @@
     font-family:var(--head);font-weight:700;letter-spacing:1.5px;text-transform:uppercase;font-size:13px;
     cursor:pointer;border-radius:2px;margin-top:8px;
   }
+  .pdf-accent-row{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:10.5px;}
+  .pdf-accent-row label{margin:0;color:var(--blue-line-dim);white-space:nowrap;}
+  .pdf-accent-row input[type=color]{width:34px;height:24px;padding:1px;border:1px solid var(--blue-line-dim);
+    background:var(--navy-deep);border-radius:2px;cursor:pointer;}
+  .pdf-accent-row input[type=color]:focus{outline:1px solid var(--cyan);border-color:var(--cyan);}
+  .pdf-accent-row span{font-family:var(--mono);color:var(--blue-line);letter-spacing:.4px;}
   .report-btn:hover{border-color:var(--cyan);color:var(--cyan);background:rgba(111,214,232,0.06);}
 
   .autosave-banner{
@@ -325,30 +339,86 @@
   .pr-page{background:#ffffff;color:#111827;font-family:'IBM Plex Mono','SFMono-Regular',Consolas,monospace;
     width:100%;max-width:800px;margin:0 auto;padding:36px 40px;}
   .pr-titleblock{display:flex;justify-content:space-between;align-items:flex-start;
-    border-bottom:2px solid #111827;padding-bottom:12px;margin-bottom:16px;}
+    border-bottom:2px solid var(--pr-accent, #7f1d1d);padding-bottom:12px;margin-bottom:16px;}
   .pr-titleblock h1{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:22px;font-weight:700;
     letter-spacing:1px;margin:0;color:#111827;text-transform:uppercase;}
   .pr-titleblock .pr-sub{font-size:11px;color:#4b5563;margin-top:3px;}
   .pr-titleblock .pr-meta{text-align:right;font-size:11px;color:#4b5563;line-height:1.7;}
   .pr-titleblock .pr-meta b{color:#111827;}
+  .pr-analysis-id{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:11.5px;
+    letter-spacing:0.8px;text-transform:uppercase;color:#4b5563;margin:0 0 8px;
+    border-left:3px solid var(--pr-accent, #7f1d1d);padding-left:7px;}
   .pr-infogrid{width:100%;font-size:11.5px;border-collapse:collapse;margin-bottom:22px;}
   .pr-infogrid td{padding:4px 0;}
   .pr-infogrid td.k{color:#6b7280;width:110px;}
   .pr-infogrid td.v{border-bottom:0.5px solid #d1d5db;padding-left:6px;}
-  .pr-section-title{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:13px;font-weight:700;
-    letter-spacing:0.5px;text-transform:uppercase;color:#111827;margin:22px 0 8px;
-    border-bottom:1px solid #111827;padding-bottom:4px;}
+  /* Section 1–7 headings: plain text only. The single maroon rule remains under the report title. */
+  .pr-section-title{
+    font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:13px;font-weight:700;
+    letter-spacing:0.5px;text-transform:uppercase;color:#111827;margin:14px 0 6px;
+    padding:0;background:none !important;border:0;border-radius:0;display:block;
+  }
   .pr-section-title:first-of-type{margin-top:0;}
   .pr-table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:4px;}
-  .pr-table th{text-align:left;font-size:9.5px;letter-spacing:0.5px;text-transform:uppercase;
-    color:#6b7280;font-weight:400;padding:5px 6px;border-bottom:1px solid #111827;}
+  /* Model Summary headers stay on one line even when the model has many supports/loads. */
+  .pr-model-summary{table-layout:fixed;}
+  .pr-model-summary thead th{white-space:nowrap;font-size:9px;}
+  .pr-model-summary thead th:nth-child(1){width:18%;}
+  .pr-model-summary thead th:nth-child(2){width:27%;}
+  .pr-model-summary thead th:nth-child(3){width:37%;}
+  .pr-model-summary thead th:nth-child(4){width:18%;}
+  /* Excel-style table headers: the whole header cell is filled, not just the text area. */
+  /* Excel-style table headers: darker maroon fill with inverted white text. */
+  .pr-table thead th{
+    text-align:left;font-size:9.5px;letter-spacing:0.5px;text-transform:uppercase;
+    color:var(--pr-accent-text, #ffffff);font-weight:500;padding:5px 6px;
+    background:var(--pr-accent, #7f1d1d) !important;border:0;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
   .pr-table td{padding:5px 6px;border-bottom:0.5px solid #d1d5db;}
+  /* Dense reports: compress only print content when the model has many supports/loads. */
+  /* Compact separators for high-density tables. */
+  .pr-section-title.pr-compact-no-rule{padding:0;margin-bottom:4px;}
+  .pr-page.pr-dense .pr-infogrid{margin-bottom:12px;}
+  .pr-page.pr-dense .pr-section-title{margin-top:9px;margin-bottom:4px;padding:0;background:none !important;color:#111827;}
+  .pr-page.pr-dense .pr-table{font-size:9.5px;}
+  .pr-page.pr-dense .pr-table th{font-size:8.5px;padding:3px 4px;background:var(--pr-accent, #7f1d1d) !important;
+    color:var(--pr-accent-text, #ffffff);
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .pr-page.pr-dense .pr-table td{padding:3px 4px;}
+  .pr-page.pr-dense .pr-tag{padding:1px 5px;font-size:8.5px;}
+  /* Extra compact mode keeps the final code-check table from being orphaned onto page 2. */
+  .pr-page.pr-ultra-dense{padding:24px 30px;}
+  .pr-page.pr-ultra-dense .pr-infogrid{margin-bottom:8px;font-size:10.5px;}
+  .pr-page.pr-ultra-dense .pr-section-title{margin-top:6px;margin-bottom:2px;padding:0;font-size:11.5px;background:none !important;color:#111827;}
+  .pr-page.pr-ultra-dense .pr-table{font-size:8.5px;margin-bottom:2px;}
+  .pr-page.pr-ultra-dense .pr-table th{font-size:7.5px;padding:2px 3px;background:var(--pr-accent, #7f1d1d) !important;
+    color:var(--pr-accent-text, #ffffff);
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .pr-page.pr-ultra-dense .pr-table td{padding:2px 3px;}
+  .pr-page.pr-ultra-dense .pr-code-summary th,
+  .pr-page.pr-ultra-dense .pr-code-summary td{padding-top:1.5px;padding-bottom:1.5px;}
   .pr-tag{display:inline-block;padding:2px 8px;border-radius:9px;font-size:10px;font-weight:500;}
   .pr-tag-pass{background:#dcfce7;color:#166534;}
   .pr-tag-fail{background:#fee2e2;color:#991b1b;}
   .pr-tag-warn{background:#fef3c7;color:#92400e;}
-  .pr-diagrams{display:flex;flex-direction:column;gap:14px;margin-bottom:6px;}
-  .pr-diagram-cap{font-size:10px;color:#6b7280;text-align:center;margin-top:2px;}
+  .pr-diagrams{display:flex;flex-direction:column;gap:8px;margin-bottom:4px;}
+  /* Page 2 is intentionally compact so Sections 6–7 stay on the same sheet. */
+  .pr-page .pr-page-break + .pr-titleblock{margin-bottom:9px;padding-bottom:8px;}
+  /* Page 2 is a separately generated print sheet; preserve the compact layout
+     previously applied through the internal page-break selectors. */
+  .pr-page.pr-page2 .pr-titleblock{margin-bottom:9px;padding-bottom:8px;}
+  .pr-page.pr-page2 .pr-infogrid{margin-bottom:8px;font-size:10px;}
+  .pr-page.pr-page2 .pr-infogrid td{padding-top:3px;padding-bottom:3px;}
+  .pr-page.pr-page2 .pr-section-title{margin-top:6px;margin-bottom:4px;padding:0;background:none !important;color:#111827;}
+  .pr-page.pr-page2 .pr-footer{margin-top:10px;padding-top:6px;font-size:8.5px;line-height:1.35;}
+  .pr-page.pr-page2 .pr-diagrams{gap:6px;margin-bottom:2px;}
+  .pr-page.pr-page2 .pr-diagram-cap{font-size:8.5px;}
+  .pr-page .pr-page-break + .pr-titleblock + .pr-infogrid{margin-bottom:8px;font-size:10px;}
+  .pr-page .pr-page-break + .pr-titleblock + .pr-infogrid + .pr-section-title{margin-top:6px;margin-bottom:4px;}
+  .pr-page .pr-page-break + .pr-titleblock ~ .pr-footer{margin-top:10px;padding-top:6px;font-size:8.5px;line-height:1.35;}
+  .pr-diagram-cap{font-size:9px;color:#6b7280;text-align:center;margin-top:1px;}
   .pr-footer{border-top:1px solid #d1d5db;padding-top:10px;margin-top:26px;font-size:9.5px;color:#9ca3af;line-height:1.6;}
   .pr-unstable{border:1.5px solid #991b1b;background:#fef2f2;border-radius:3px;padding:10px 14px;margin-bottom:16px;}
   .pr-unstable-title{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-weight:700;letter-spacing:1px;
@@ -391,6 +461,19 @@
     background:linear-gradient(180deg, var(--navy-panel), var(--navy-mid));
     border:1px solid var(--blue-line-dim);border-radius:3px;padding:32px 28px;
   }
+  .license-box.disclaimer-open{max-width:720px;text-align:left;}
+  .legal-title{font-family:var(--head);font-size:18px;font-weight:700;letter-spacing:1.2px;
+    text-transform:uppercase;color:var(--cyan);margin-bottom:10px;}
+  .legal-copy{font-size:11.5px;line-height:1.7;color:var(--paper);max-height:52vh;overflow:auto;
+    padding-right:8px;}
+  .legal-copy p{margin:0 0 10px;}
+  .legal-copy ol{margin:0 0 12px;padding-left:20px;}
+  .legal-copy li{margin:0 0 7px;}
+  .legal-check{display:flex;align-items:flex-start;gap:9px;margin-top:14px;padding:10px;
+    border:1px solid var(--blue-line-dim);background:rgba(255,255,255,0.02);cursor:pointer;}
+  .legal-check input{margin-top:2px;flex:0 0 auto;accent-color:var(--cyan);}
+  .legal-check span{font-size:11px;line-height:1.55;color:var(--paper);}
+  .legal-accept-btn{margin-top:12px;}
   .license-brand{font-family:var(--head);font-weight:700;font-size:30px;letter-spacing:2px;color:var(--paper);}
   .license-brand span{color:var(--cyan);}
   .license-sub{font-size:12px;color:var(--blue-line-dim);letter-spacing:0.5px;margin:6px 0 22px;}
@@ -431,6 +514,27 @@
 <div id="licenseGate" class="license-gate">
   <div class="license-box">
     <div class="license-brand">BEAM<span>//</span>FE</div>
+
+    <div id="authDisclaimerView" style="display:none;">
+      <div class="legal-title">Important Notice &amp; Disclaimer</div>
+      <div class="legal-copy">
+        <p>BEAM//FE is an engineering calculation and analysis tool intended to assist qualified users with structural engineering calculations.</p>
+        <p>By checking the box below and selecting <b>Continue</b>, I acknowledge and agree that:</p>
+        <ol>
+          <li>BEAM//FE provides calculation results for design assistance and does not replace engineering judgment, independent verification, applicable standards, codes, project requirements, or professional review.</li>
+          <li>I am responsible for confirming the accuracy and suitability of the input data, assumptions, material properties, loads, boundary conditions, design criteria, and calculation results before relying on them.</li>
+          <li>I will independently verify the results and determine whether the analysis is appropriate for the specific project, structure, materials, loading conditions, and applicable requirements.</li>
+          <li>BEAM//FE and its developer are not responsible for decisions made solely on the basis of unverified calculation results or for errors arising from incorrect, incomplete, or inappropriate input data.</li>
+          <li>I understand that the calculation results are provided as an engineering aid and should not be treated as a substitute for the review, approval, or professional responsibility required for a particular project or jurisdiction.</li>
+        </ol>
+      </div>
+      <label class="legal-check">
+        <input type="checkbox" id="legalAcceptanceCheckbox">
+        <span>I have read, understood, and agree to this notice and disclaimer, and I acknowledge these conditions each time I use BEAM//FE.</span>
+      </label>
+      <button class="license-unlock-btn legal-accept-btn" id="legalAcceptBtn" disabled>Continue ▸</button>
+      <div class="license-msg" id="legalAcceptMsg"></div>
+    </div>
 
     <div id="authLoginView">
       <div class="license-sub">Log in to your account</div>
@@ -502,13 +606,24 @@
           <div class="section-title">Project Details</div>
           <div class="row2">
             <div><label>Project Name</label><input type="text" id="prjName" placeholder="e.g. 123 Main St Renovation"></div>
-            <div><label>Beam / Member ID</label><input type="text" id="prjBeamId" placeholder="e.g. B-1"></div>
+            <div><label>Date</label><input type="date" id="prjDate"></div>
           </div>
           <div class="row2">
             <div><label>Designed By</label><input type="text" id="prjBy" placeholder="Initials or name"></div>
             <div><label>Checked By</label><input type="text" id="prjChecked" placeholder="Initials or name"></div>
           </div>
-          <div><label>Date</label><input type="date" id="prjDate"></div>
+          <div class="analysis-manager">
+            <div class="analysis-manager-head">
+              <label for="analysisSelect">Analysis</label>
+              <button type="button" class="import-btn" id="addAnalysisBtn">+ New Analysis</button>
+            </div>
+            <select id="analysisSelect"></select>
+            <div class="row2" style="margin-top:8px;">
+              <div><label>Analysis Name</label><input type="text" id="analysisName" placeholder="e.g. Dead + Live Load"></div>
+              <div><label>Beam / Member ID</label><input type="text" id="prjBeamId" placeholder="e.g. B-1"></div>
+            </div>
+            <div class="field-note">Project details are shared by all analyses. Each analysis keeps its own beam, section, supports and loads.</div>
+          </div>
         </div>
 
         <div class="stack">
@@ -578,6 +693,11 @@
         </div>
 
         <button class="run-btn" id="runBtn">Run Analysis ▸</button>
+        <div class="pdf-accent-row">
+          <label for="pdfAccentColor">PDF Accent Color</label>
+          <input type="color" id="pdfAccentColor" value="#7f1d1d" title="PDF export accent color">
+          <span id="pdfAccentValue">#7F1D1D</span>
+        </div>
         <button class="report-btn" id="reportBtn">Generate Report (PDF) ⬇</button>
         <div class="row2" style="margin-top:8px;">
           <button class="report-btn" id="saveBtn">Save Model ⬇</button>
@@ -680,6 +800,28 @@ let currentLicense = null; // {license_type, expires_at}
 let currentUserEmail = null;
 let inPasswordRecovery = false; // true while showing the "set a new password" screen — blocks
                                   // the normal login/license-check flow from racing past it
+const LEGAL_DOCUMENT_TYPE = 'beamfe-disclaimer';
+const LEGAL_DOCUMENT_VERSION = '1.0';
+const LEGAL_DOCUMENT_TEXT = [
+  'BEAM//FE is an engineering calculation and analysis tool intended to assist qualified users with structural engineering calculations.',
+  'By checking the box below and selecting Continue, I acknowledge and agree that:',
+  '1. BEAM//FE provides calculation results for design assistance and does not replace engineering judgment, independent verification, applicable standards, codes, project requirements, or professional review.',
+  '2. I am responsible for confirming the accuracy and suitability of the input data, assumptions, material properties, loads, boundary conditions, design criteria, and calculation results before relying on them.',
+  '3. I will independently verify the results and determine whether the analysis is appropriate for the specific project, structure, materials, loading conditions, and applicable requirements.',
+  '4. BEAM//FE and its developer are not responsible for decisions made solely on the basis of unverified calculation results or for errors arising from incorrect, incomplete, or inappropriate input data.',
+  '5. I understand that the calculation results are provided as an engineering aid and should not be treated as a substitute for the review, approval, or professional responsibility required for a particular project or jurisdiction.',
+  'I have read, understood, and agree to this notice and disclaimer, and I acknowledge these conditions each time I use BEAM//FE.'
+].join('\n');
+
+async function getLegalDocumentHash(){
+  if (window.crypto && crypto.subtle && window.TextEncoder){
+    const bytes = new TextEncoder().encode(LEGAL_DOCUMENT_TEXT);
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+  return 'sha256-unavailable';
+}
+
 
 function getLicenseWatermarkText(){
   // Watermark only ever shows for trial usage — a paid license produces a clean report
@@ -696,10 +838,12 @@ function hideAllGateViews(){
   });
 }
 function hideAllGateViews(){
-  ['authLoginView','authSignupView','authResetView','licenseNeededView'].forEach(id=>{
+  ['authLoginView','authSignupView','authResetView','licenseNeededView','authDisclaimerView'].forEach(id=>{
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
+  const box = document.querySelector('#licenseGate .license-box');
+  if (box) box.classList.remove('disclaimer-open');
 }
 function showLoginView(msg, msgClass){
   if (inPasswordRecovery) return; // don't let a slower in-flight check overwrite the reset screen
@@ -739,6 +883,73 @@ function showLicenseNeededView(email, reasonText){
   document.getElementById('licenseNeededMsg').className = 'license-msg';
   document.getElementById('gumroadKeyInput').value = '';
 }
+function showDisclaimerView(){
+  const gate = document.getElementById('licenseGate');
+  const box = document.querySelector('#licenseGate .license-box');
+  if (gate) gate.style.display = 'flex';
+  if (box) box.classList.add('disclaimer-open');
+  hideAllGateViews();
+  const view = document.getElementById('authDisclaimerView');
+  if (view) view.style.display = 'block';
+  const cb = document.getElementById('legalAcceptanceCheckbox');
+  const btn = document.getElementById('legalAcceptBtn');
+  const msg = document.getElementById('legalAcceptMsg');
+  if (cb) cb.checked = false;
+  if (btn) btn.disabled = true;
+  if (msg){
+    msg.textContent = '';
+    msg.className = 'license-msg';
+  }
+}
+
+async function recordLegalAcceptance(){
+  const cb = document.getElementById('legalAcceptanceCheckbox');
+  const btn = document.getElementById('legalAcceptBtn');
+  const msg = document.getElementById('legalAcceptMsg');
+  if (!cb || !btn || !msg || !cb.checked || !sb) return;
+  btn.disabled = true;
+  msg.textContent = 'Recording acceptance…';
+  msg.className = 'license-msg pending';
+  try{
+    const {data:{user}, error:userError} = await sb.auth.getUser();
+    if (userError || !user){
+      throw new Error(userError?.message || 'No authenticated user session.');
+    }
+    const documentHash = await getLegalDocumentHash();
+    const {error} = await sb.from('beamfe_legal_acceptances').insert({
+      user_id:user.id,
+      product_id:PRODUCT_ID,
+      document_type:LEGAL_DOCUMENT_TYPE,
+      document_version:LEGAL_DOCUMENT_VERSION,
+      document_hash:documentHash,
+      user_agent:navigator.userAgent,
+      path:window.location.pathname
+    });
+    if (error) throw error;
+    msg.textContent = 'Acceptance recorded ✓';
+    msg.className = 'license-msg ok';
+    setTimeout(()=>{
+      hideLicenseGate();
+      renderLicenseFooter();
+    }, 180);
+  }catch(err){
+    console.error('Legal acceptance recording failed', err);
+    msg.textContent = 'Could not record your acceptance. Please try again.';
+    msg.className = 'license-msg err';
+    btn.disabled = false;
+    if (cb) cb.checked = true;
+  }
+}
+
+const legalCb=document.getElementById('legalAcceptanceCheckbox');
+const legalBtn=document.getElementById('legalAcceptBtn');
+if (legalCb && legalBtn){
+  legalCb.addEventListener('change', ()=>{
+    legalBtn.disabled = !legalCb.checked;
+  });
+  legalBtn.addEventListener('click', recordLegalAcceptance);
+}
+
 function hideLicenseGate(){
   const gate = document.getElementById('licenseGate');
   if (gate) gate.style.display = 'none';
@@ -809,7 +1020,7 @@ async function attemptUpgradeRedeem(){
   btn.disabled = false;
   if (result.error){ msg.textContent = result.error; msg.className = 'license-msg err'; return; }
   msg.textContent = 'License activated!'; msg.className = 'license-msg ok';
-  await checkLicenseAndRoute(currentUserEmail);
+  await checkLicenseAndRoute(currentUserEmail, {showDisclaimer:false});
   closeAllPopups();
 }
 
@@ -824,11 +1035,15 @@ async function callVerifyLicense(action, extra){
   return data;
 }
 
-async function checkLicenseAndRoute(userEmail){
+async function checkLicenseAndRoute(userEmail, options){
   const result = await callVerifyLicense('check_license');
   if (result.valid){
     currentLicense = {license_type: result.license_type, expires_at: result.expires_at};
     currentUserEmail = userEmail;
+    if (!options || options.showDisclaimer !== false){
+      showDisclaimerView();
+      return true;
+    }
     hideLicenseGate();
     renderLicenseFooter();
     return true;
@@ -1021,6 +1236,176 @@ let tribWidthValue = 1.2;
 // longer possible to accidentally mix Line and Area entries across different loads (the
 // exact mistake that produces a wrong total load without any error showing up).
 let udlModeGlobal = 'line';
+
+/* ======================= PROJECT / MULTI-ANALYSIS STATE ======================= */
+let currentAnalysisIndex = 0;
+let projectDetails = {name:'', by:'', checked:'', date:''};
+let analyses = [];
+
+function deepClone(value){
+  return JSON.parse(JSON.stringify(value));
+}
+
+function defaultAnalysisSnapshot(){
+  return {
+    id:'analysis-1',
+    name:'Analysis 1',
+    beamId:'B-1',
+    beamLength:beamLengthValue,
+    tribWidth:tribWidthValue,
+    udlModeGlobal,
+    sectionName:'',
+    propE:'11000',
+    propI:'51840000',
+    allowFbSag:'5',
+    allowFbHog:'5',
+    allowFv:'20',
+    deflLimit:'270',
+    supports:deepClone(supports),
+    pointLoads:deepClone(pointLoads),
+    udls:deepClone(udls),
+    lastResults:null
+  };
+}
+
+function syncProjectDetailsFromDom(){
+  projectDetails = {
+    name:(document.getElementById('prjName')?.value || '').trim(),
+    by:(document.getElementById('prjBy')?.value || '').trim(),
+    checked:(document.getElementById('prjChecked')?.value || '').trim(),
+    date:document.getElementById('prjDate')?.value || ''
+  };
+}
+
+function loadProjectDetailsToDom(){
+  const fields = {
+    prjName: projectDetails.name || '',
+    prjBy: projectDetails.by || '',
+    prjChecked: projectDetails.checked || '',
+    prjDate: projectDetails.date || ''
+  };
+  Object.keys(fields).forEach(id=>{
+    const el = document.getElementById(id);
+    if (el) el.value = fields[id];
+  });
+}
+
+function syncCurrentAnalysisToStore(){
+  if (!analyses.length) analyses.push(defaultAnalysisSnapshot());
+  const a = analyses[currentAnalysisIndex] || analyses[0];
+  currentAnalysisIndex = analyses.indexOf(a);
+  if (currentAnalysisIndex < 0) currentAnalysisIndex = 0;
+  const lengthInput = document.getElementById('beamLength');
+  if (lengthInput && lengthInput.value !== '') beamLengthValue = parseFloat(lengthInput.value);
+  const tribInput = document.getElementById('tribWidth');
+  if (tribInput && tribInput.value !== '') tribWidthValue = parseFloat(tribInput.value);
+  a.name = (document.getElementById('analysisName')?.value || a.name || 'Analysis '+(currentAnalysisIndex+1)).trim();
+  a.beamId = (document.getElementById('prjBeamId')?.value || a.beamId || 'B-'+(currentAnalysisIndex+1)).trim();
+  a.beamLength = beamLengthValue;
+  a.tribWidth = tribWidthValue;
+  a.udlModeGlobal = udlModeGlobal;
+  a.sectionName = document.getElementById('sectionName')?.value || '';
+  a.propE = document.getElementById('propE')?.value || '';
+  a.propI = document.getElementById('propI')?.value || '';
+  a.allowFbSag = document.getElementById('allowFbSag')?.value || '';
+  a.allowFbHog = document.getElementById('allowFbHog')?.value || '';
+  a.allowFv = document.getElementById('allowFv')?.value || '';
+  a.deflLimit = document.getElementById('deflLimit')?.value || '';
+  a.supports = deepClone(supports);
+  a.pointLoads = deepClone(pointLoads);
+  a.udls = deepClone(udls);
+  a.lastResults = lastResults ? deepClone(lastResults) : (a.lastResults || null);
+  syncProjectDetailsFromDom();
+}
+
+function loadAnalysisToDom(index){
+  const a = analyses[index];
+  if (!a) return false;
+  currentAnalysisIndex = index;
+  supports = deepClone(a.supports || []);
+  pointLoads = deepClone(a.pointLoads || []);
+  udls = deepClone(a.udls || []);
+  beamLengthValue = parseFloat(a.beamLength) || 6;
+  tribWidthValue = parseFloat(a.tribWidth) || 1.2;
+  udlModeGlobal = a.udlModeGlobal === 'area' ? 'area' : 'line';
+  setFieldVal('beamLength', beamLengthValue);
+  setFieldVal('tribWidth', tribWidthValue);
+  setFieldVal('analysisName', a.name || 'Analysis '+(index+1));
+  setFieldVal('prjBeamId', a.beamId || ('B-'+(index+1)));
+  setFieldVal('sectionName', a.sectionName);
+  setFieldVal('propE', a.propE);
+  setFieldVal('propI', a.propI);
+  setFieldVal('allowFbSag', a.allowFbSag);
+  setFieldVal('allowFbHog', a.allowFbHog);
+  setFieldVal('allowFv', a.allowFv);
+  setFieldVal('deflLimit', a.deflLimit);
+  renderAnalysisPicker();
+  return true;
+}
+
+function renderAnalysisPicker(){
+  const sel = document.getElementById('analysisSelect');
+  if (!sel) return;
+  if (!analyses.length) analyses.push(defaultAnalysisSnapshot());
+  sel.innerHTML = analyses.map((a,i)=>{
+    const name = (a.name || 'Analysis '+(i+1)).trim() || ('Analysis '+(i+1));
+    const id = (a.beamId || '').trim();
+    const label = id ? name+' — '+id : name;
+    return '<option value="'+i+'">'+esc(label)+'</option>';
+  }).join('');
+  sel.value = String(currentAnalysisIndex);
+}
+
+function watchProjectDetailsForAutosave(){
+  ['prjName','prjBy','prjChecked','prjDate'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (!el || el.dataset.projectAutosaveBound === '1') return;
+    el.dataset.projectAutosaveBound = '1';
+    el.addEventListener('input', ()=>{
+      syncProjectDetailsFromDom();
+      saveAutosave();
+    });
+    el.addEventListener('change', ()=>{
+      syncProjectDetailsFromDom();
+      saveAutosave();
+    });
+  });
+}
+
+function ensureAnalysisStore(){
+  if (!analyses.length){
+    analyses = [defaultAnalysisSnapshot()];
+    currentAnalysisIndex = 0;
+  }
+  renderAnalysisPicker();
+}
+
+function switchAnalysis(index){
+  const next = parseInt(index,10);
+  if (!isFinite(next) || !analyses[next] || next===currentAnalysisIndex) return;
+  syncCurrentAnalysisToStore();
+  loadAnalysisToDom(next);
+  runAnalysis();
+}
+
+function addNewAnalysis(){
+  syncCurrentAnalysisToStore();
+  const source = analyses[currentAnalysisIndex] || defaultAnalysisSnapshot();
+  const n = analyses.length + 1;
+  const a = deepClone(source);
+  a.id = 'analysis-'+n+'-'+Date.now().toString(36);
+  a.name = 'Analysis '+n;
+  a.beamId = 'B-'+n;
+  a.lastResults = null;
+  analyses.push(a);
+  currentAnalysisIndex = analyses.length-1;
+  loadAnalysisToDom(currentAnalysisIndex);
+  renderAnalysisPicker();
+  runAnalysis();
+}
+
+ensureAnalysisStore();
+watchProjectDetailsForAutosave();
 
 function getBeamLength(){ return beamLengthValue; }
 
@@ -1462,6 +1847,7 @@ function runAnalysis(afterDraw){
     unstableSupports
   }, afterDraw);
 
+  if (analyses.length) syncCurrentAnalysisToStore();
   if (suppressAutosaveOnce){ suppressAutosaveOnce = false; } else { saveAutosave(); }
 }
 
@@ -1744,8 +2130,11 @@ function drawSchematic(R, canvasId, printMode, canvasOpts){
     liftedStroke:'#EF6B62', liftedDash:'rgba(239,107,98,0.5)', dim:'rgba(191,220,250,0.35)',
     dimText:'rgba(191,220,250,0.6)', hatching:'rgba(191,220,250,0.5)', labelText:'#BFDCFA'
   };
-  const {ctx,w,h} = setupCanvas(canvasId, 170, canvasOpts);
+  const printScale = printMode && canvasOpts && canvasOpts.printScale ? canvasOpts.printScale : 1;
+  const printHeight = printMode && canvasOpts && canvasOpts.printHeight ? canvasOpts.printHeight : 170;
+  const {ctx,w,h} = setupCanvas(canvasId, printMode ? printHeight : 170, canvasOpts);
   ctx.clearRect(0,0,w,h);
+  if (printMode && printScale !== 1) ctx.scale(1, printScale);
   const padL=50, padR=30, top=40, baseY=100;
   const L = R.L;
   const xScale = (w-padL-padR)/L;
@@ -2539,7 +2928,8 @@ function renderTableBody(cat){
 
 /* ---- Canvas: generic V/M/Defl series ---- */
 function drawSeries(id, points, unit, color, fillFromZero, printMode, canvasOpts, hoverX, invertY, limitLines){
-  const {ctx,w,h} = setupCanvas(id, 180, canvasOpts);
+  const drawHeight = canvasOpts && canvasOpts.forceHeight ? canvasOpts.forceHeight : 180;
+  const {ctx,w,h} = setupCanvas(id, drawHeight, canvasOpts);
   ctx.clearRect(0,0,w,h);
   const padL=60, padR=20, padT=14, padB=22;
   const plotW = w-padL-padR, plotH = h-padT-padB;
@@ -2729,6 +3119,10 @@ function darkenForPrint(screenColor){
   return map[screenColor] || screenColor;
 }
 
+const analysisSelectEl = document.getElementById('analysisSelect');
+const addAnalysisBtnEl = document.getElementById('addAnalysisBtn');
+if (analysisSelectEl) analysisSelectEl.addEventListener('change', e=>switchAnalysis(e.target.value));
+if (addAnalysisBtnEl) addAnalysisBtnEl.addEventListener('click', addNewAnalysis);
 document.getElementById('runBtn').addEventListener('click', runAnalysis);
 window.addEventListener('resize', ()=>{ if(document.getElementById('cvShear')) runAnalysis(); });
 
@@ -2740,6 +3134,27 @@ window.addEventListener('resize', ()=>{ if(document.getElementById('cvShear')) r
 
 function esc(s){
   return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function pdfAccentTextColor(hex){
+  const h = String(hex||'').replace('#','').trim();
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return '#ffffff';
+  const rgb = [0,2,4].map(i=>parseInt(h.slice(i,i+2),16)/255);
+  const lin = rgb.map(v=>v<=0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055,2.4));
+  const luminance = 0.2126*lin[0] + 0.7152*lin[1] + 0.0722*lin[2];
+  return luminance > 0.179 ? '#111827' : '#ffffff';
+}
+
+const pdfAccentEl = document.getElementById('pdfAccentColor');
+const pdfAccentValueEl = document.getElementById('pdfAccentValue');
+function syncPdfAccentValue(){
+  if (!pdfAccentEl) return;
+  const value = (pdfAccentEl.value || '#7f1d1d').toUpperCase();
+  if (pdfAccentValueEl) pdfAccentValueEl.textContent = value;
+}
+if (pdfAccentEl){
+  pdfAccentEl.addEventListener('input', syncPdfAccentValue);
+  syncPdfAccentValue();
 }
 
 function buildCodeCheckRows(R){
@@ -2768,12 +3183,16 @@ function prTag(pass){
   return pass ? '<span class="pr-tag pr-tag-pass">PASS</span>' : '<span class="pr-tag pr-tag-fail">FAIL</span>';
 }
 
-function buildPrintReport(R){
-  const prjName = document.getElementById('prjName').value.trim() || '—';
-  const beamId = document.getElementById('prjBeamId').value.trim() || '—';
-  const by = document.getElementById('prjBy').value.trim() || '—';
-  const checked = document.getElementById('prjChecked').value.trim() || '—';
-  const dateVal = document.getElementById('prjDate').value;
+function buildPrintReportSingle(R, meta){
+  meta = meta || {};
+  const prjName = projectDetails.name || document.getElementById('prjName').value.trim() || '—';
+  const beamId = String(meta.beamId || '—').trim() || '—';
+  const by = projectDetails.by || document.getElementById('prjBy').value.trim() || '—';
+  const checked = projectDetails.checked || document.getElementById('prjChecked').value.trim() || '—';
+  const dateVal = projectDetails.date || document.getElementById('prjDate').value;
+  const analysisName = String(meta.analysisName || 'Analysis').trim() || 'Analysis';
+  const propE = String(meta.propE ?? document.getElementById('propE').value ?? '');
+  const propI = String(meta.propI ?? document.getElementById('propI').value ?? '');
   const dateDisplay = dateVal ? new Date(dateVal+'T00:00:00').toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}) : '—';
 
   const supSummary = R.supports.map((s,i)=>'S'+(i+1)+' '+(s.type==='tie'?'tie-down':'free')+' @ '+fmt(s.pos,2)+'m').join(', ');
@@ -2782,17 +3201,19 @@ function buildPrintReport(R){
     R.udls.length ? R.udls.length+' distributed load'+(R.udls.length>1?'s':'') : null
   ].filter(Boolean).join(' + ') || 'none';
 
-  const sectionName = document.getElementById('sectionName').value.trim() || '—';
+  const sectionName = String(meta.sectionName || document.getElementById('sectionName').value.trim() || '—').trim() || '—';
 
   const root = document.getElementById('printReport');
   const watermarkText = getLicenseWatermarkText();
 
+  const page1Label = meta.page1Label || '1 of 2';
+  const page2Label = meta.page2Label || '2 of 2';
   function pageHeaderHtml(sheetLabel){
     return `
       <div class="pr-titleblock">
         <div>
           <h1>Beam analysis report</h1>
-          <div class="pr-sub">Finite element solution — Euler-Bernoulli beam elements, combined load case</div>
+          <div class="pr-sub"><b>${esc(analysisName)}</b></div>
         </div>
         <div class="pr-meta">
           <div>Sheet <b>${sheetLabel}</b></div>
@@ -2821,17 +3242,31 @@ function buildPrintReport(R){
        </div>`
     : '';
 
+  const printItemCount = R.supports.length + R.pointLoads.length + R.udls.length;
+  const densePrint = printItemCount >= 12;
+  const ultraDensePrint = printItemCount >= 18;
+  // Keep the report to exactly two pages. When page 1 is too dense, move Section 6
+  // to page 2 so it stays with the diagrams instead of creating a third page.
+  const codeCheckOnPage2 = R.supports.length >= 6 || R.supports.length + R.pointLoads.length + R.udls.length >= 10;
+  const codeCheckHtml = `
+      <div class="pr-section-title">6. Code check summary</div>
+      <table class="pr-table pr-code-summary">
+        <thead><tr><th>Check</th><th>Demand</th><th>Capacity</th><th>Ratio</th><th>Status</th></tr></thead>
+        <tbody>${buildCodeCheckRows(R).map(row=>`
+          <tr><td>${esc(row.check)}</td><td>${row.demand}</td><td>${row.capacity}</td><td>${row.ratio}</td><td>${prTag(row.pass)}</td></tr>
+        `).join('')}</tbody>
+      </table>`;
   root.innerHTML = `
-    <div class="pr-page">
+    <div class="pr-page${densePrint ? ' pr-dense' : ''}${ultraDensePrint ? ' pr-ultra-dense' : ''}" style="--pr-accent:${pdfAccentEl ? pdfAccentEl.value : '#7f1d1d'};--pr-accent-text:${pdfAccentTextColor(pdfAccentEl ? pdfAccentEl.value : '#7f1d1d')};">
       <div class="pr-watermark">${watermarkText ? esc(watermarkText) : ''}</div>
-      ${pageHeaderHtml('1 of 2')}
+      ${pageHeaderHtml(page1Label)}
       ${unstableHtml}
 
       <div class="pr-section-title">1. Beam schematic</div>
       <canvas id="printSchematic" height="170"></canvas>
 
-      <div class="pr-section-title">2. Model summary</div>
-      <table class="pr-table">
+      <div class="pr-section-title pr-compact-no-rule">2. Model summary</div>
+      <table class="pr-table pr-model-summary">
         <thead><tr><th>Span length</th><th>Supports</th><th>Loads (combined case)</th><th>Tributary width</th></tr></thead>
         <tbody><tr>
           <td>${fmt(R.L,2)} m</td>
@@ -2846,8 +3281,8 @@ function buildPrintReport(R){
         <thead><tr><th>Section</th><th>E</th><th>I</th><th>Allow. Sag M</th><th>Allow. Hog M</th><th>Allow. Shear</th><th>Defl. limit</th></tr></thead>
         <tbody><tr>
           <td>${esc(sectionName)}</td>
-          <td>${fmt(parseFloat(document.getElementById('propE').value)||0, 0)} MPa</td>
-          <td>${fmt(parseFloat(document.getElementById('propI').value)||0, 0)} mm\u2074</td>
+          <td>${fmt(parseFloat(propE)||0, 0)} MPa</td>
+          <td>${fmt(parseFloat(propI)||0, 0)} mm\u2074</td>
           <td>${R.FbSag ? fmt(R.FbSag,2)+' kN\u00b7m' : '—'}</td>
           <td>${R.FbHog ? fmt(R.FbHog,2)+' kN\u00b7m' : '—'}</td>
           <td>${R.Fv ? fmt(R.Fv,2)+' kN' : '—'}</td>
@@ -2855,7 +3290,7 @@ function buildPrintReport(R){
         </tr></tbody>
       </table>
 
-      <div class="pr-section-title">4. Loadings</div>
+      <div class="pr-section-title pr-compact-no-rule">4. Loadings</div>
       <table class="pr-table">
         <thead><tr><th>Point load</th><th>Position</th><th>Magnitude</th></tr></thead>
         <tbody>${R.pointLoads.length ? R.pointLoads.map((p,i)=>`
@@ -2894,16 +3329,8 @@ function buildPrintReport(R){
         }).join('')}</tbody>
       </table>
 
-      <div class="pr-section-title">6. Code check summary</div>
-      <table class="pr-table">
-        <thead><tr><th>Check</th><th>Demand</th><th>Capacity</th><th>Ratio</th><th>Status</th></tr></thead>
-        <tbody>${buildCodeCheckRows(R).map(row=>`
-          <tr><td>${esc(row.check)}</td><td>${row.demand}</td><td>${row.capacity}</td><td>${row.ratio}</td><td>${prTag(row.pass)}</td></tr>
-        `).join('')}</tbody>
-      </table>
-
-      <div class="pr-page-break"></div>
-      ${pageHeaderHtml('2 of 2')}
+      ${codeCheckOnPage2 ? '' : codeCheckHtml}
+      ${codeCheckOnPage2 ? '<div class="pr-page-break"></div>' + pageHeaderHtml(page2Label) + codeCheckHtml : '<div class="pr-page-break"></div>' + pageHeaderHtml(page2Label)}
 
       <div class="pr-section-title">7. Shear, moment and deflection diagrams</div>
       <div class="pr-diagrams">
@@ -2918,23 +3345,136 @@ function buildPrintReport(R){
       </div>
     </div>`;
 
+  // Split the two logical sheets into two real print-page containers.
+  // Keeping page 1 and page 2 as separate .pr-page elements prevents the browser
+  // from reflowing an oversized analysis into a third physical sheet.
+  const reportPage1 = root.querySelector('.pr-page');
+  const internalPageBreak = reportPage1 ? reportPage1.querySelector(':scope > .pr-page-break') : null;
+  if (reportPage1 && internalPageBreak){
+    const reportPage2 = document.createElement('div');
+    reportPage2.className = reportPage1.className + ' pr-page2';
+    const pageStyle = reportPage1.getAttribute('style');
+    if (pageStyle) reportPage2.setAttribute('style', pageStyle);
+
+    let moving = internalPageBreak.nextSibling;
+    while (moving){
+      const next = moving.nextSibling;
+      reportPage2.appendChild(moving);
+      moving = next;
+    }
+    internalPageBreak.remove();
+
+    const separator = document.createElement('div');
+    separator.className = 'pr-page-break';
+    reportPage1.after(separator, reportPage2);
+  }
+
   // redraw clean, print-safe versions of the diagrams into the report canvases
   const pageW = 680;
+  const printSchematicScale = printItemCount >= 18 ? 0.70 : printItemCount >= 12 ? 0.82 : 1;
+  const printSchematicHeight = Math.round(170 * printSchematicScale);
+  const printSchematicLimits = {forceWidth:pageW, forceScale:2.5, printScale:printSchematicScale, printHeight:printSchematicHeight};
   const printShearLimits = computeSidedLimitLines(R.diag.map(d=>d.V), R.Fv, R.Fv,
     cap=>'Allow. V = '+fmt(cap,2)+' kN', cap=>'Allow. V = \u2212'+fmt(cap,2)+' kN');
   const printMomentLimits = computeSidedLimitLines(R.diag.map(d=>d.M), R.FbSag, R.FbHog,
     cap=>'Allow. Sag M = '+fmt(cap,2)+' kN\u00b7m', cap=>'Allow. Hog M = '+fmt(cap,2)+' kN\u00b7m');
-  drawSchematic(R, 'printSchematic', true, {forceWidth:pageW, forceScale:2.5});
-  drawSeries('printShear', R.diag.map(d=>({x:d.x,y:d.V})), 'kN', '#6FD6E8', false, true, {forceWidth:pageW, forceScale:2.5}, undefined, false, printShearLimits);
-  drawSeries('printMoment', R.diag.map(d=>({x:d.x,y:d.M})), 'kN·m', '#F2A93B', true, true, {forceWidth:pageW, forceScale:2.5}, undefined, true, printMomentLimits);
+  drawSchematic(R, 'printSchematic', true, printSchematicLimits);
+  drawSeries('printShear', R.diag.map(d=>({x:d.x,y:d.V})), 'kN', '#6FD6E8', false, true, {forceWidth:pageW, forceScale:2.5, forceHeight:160}, undefined, false, printShearLimits);
+  drawSeries('printMoment', R.diag.map(d=>({x:d.x,y:d.M})), 'kN·m', '#F2A93B', true, true, {forceWidth:pageW, forceScale:2.5, forceHeight:160}, undefined, true, printMomentLimits);
   const printDeflLimits = computeSidedLimitLines(R.deflSamples.map(d=>d.defl_mm), R.deflAllowIn, R.deflAllowIn,
     cap=>'Defl. Limit = '+fmt(cap,1)+' mm (L/'+fmt(R.deflDenom,0)+')', cap=>'Defl. Limit = \u2212'+fmt(cap,1)+' mm (L/'+fmt(R.deflDenom,0)+')');
-  drawSeries('printDefl', R.deflSamples.map(d=>({x:d.x,y:d.defl_mm})), 'mm', '#5FCB8D', false, true, {forceWidth:pageW, forceScale:2.5}, undefined, false, printDeflLimits);
+  drawSeries('printDefl', R.deflSamples.map(d=>({x:d.x,y:d.defl_mm})), 'mm', '#5FCB8D', false, true, {forceWidth:pageW, forceScale:2.5, forceHeight:160}, undefined, false, printDeflLimits);
+}
+
+function collectAllAnalysisResults(){
+  syncCurrentAnalysisToStore();
+  const originalIndex = currentAnalysisIndex;
+  const collected = [];
+  const invalid = [];
+  for (let i=0; i<analyses.length; i++){
+    loadAnalysisToDom(i);
+    lastResults = null;
+    suppressAutosaveOnce = true;
+    runAnalysis();
+    if (lastResults){
+      collected.push({
+        R: deepClone(lastResults),
+        meta:{
+          analysisName:analyses[i].name || ('Analysis '+(i+1)),
+          beamId:analyses[i].beamId || ('B-'+(i+1)),
+          sectionName:analyses[i].sectionName || '',
+          propE:analyses[i].propE || '',
+          propI:analyses[i].propI || '',
+          analysisIndex:i
+        }
+      });
+    } else {
+      invalid.push(analyses[i].name || ('Analysis '+(i+1)));
+    }
+  }
+  loadAnalysisToDom(originalIndex);
+  lastResults = null;
+  suppressAutosaveOnce = true;
+  runAnalysis();
+  if (invalid.length){
+    alert('These analyses could not be included because they are not valid:\n\n'+invalid.join('\n'));
+  }
+  return collected;
+}
+
+function buildPrintReport(allResults){
+  if (!Array.isArray(allResults)) allResults = allResults ? [{R:allResults,meta:{}}] : [];
+  const finalRoot = document.getElementById('printReport');
+  if (!finalRoot || !allResults.length) return;
+  finalRoot.innerHTML = '';
+  const totalPages = allResults.length * 2;
+  const fragments = [];
+
+  for (let i=0; i<allResults.length; i++){
+    const item = allResults[i];
+    const scratch = document.createElement('div');
+    scratch.id = 'printReport';
+    scratch.style.position='fixed';
+    scratch.style.left='-100000px';
+    scratch.style.top='0';
+    scratch.style.width='800px';
+    scratch.style.visibility='hidden';
+    document.body.appendChild(scratch);
+
+    const meta = Object.assign({}, item.meta, {
+      page1Label:(i*2+1)+' of '+totalPages,
+      page2Label:(i*2+2)+' of '+totalPages
+    });
+
+    const finalId = finalRoot.id;
+    finalRoot.id='printReportFinal';
+    buildPrintReportSingle(item.R, meta);
+
+    scratch.querySelectorAll('canvas').forEach(cv=>{
+      try{
+        const img=document.createElement('img');
+        const w=cv.clientWidth || 680;
+        const h=cv.clientHeight || parseInt(cv.getAttribute('height')||'160',10);
+        img.src=cv.toDataURL('image/png');
+        img.width=w; img.height=h;
+        img.style.width=w+'px'; img.style.height=h+'px';
+        cv.replaceWith(img);
+      }catch(err){ console.error('PDF canvas conversion failed', err); }
+    });
+
+    fragments.push(scratch.innerHTML);
+    scratch.remove();
+    finalRoot.id=finalId;
+  }
+
+  finalRoot.innerHTML = fragments.join('<div class="pr-page-break"></div>');
 }
 
 document.getElementById('reportBtn').addEventListener('click', ()=>{
-  if (!lastResults){ alert('Run the analysis first.'); return; }
-  buildPrintReport(lastResults);
+  syncProjectDetailsFromDom();
+  const allResults = collectAllAnalysisResults();
+  if (!allResults.length){ alert('Run at least one valid analysis first.'); return; }
+  buildPrintReport(allResults);
   setTimeout(()=> window.print(), 80);
 });
 
@@ -2943,30 +3483,43 @@ const AUTOSAVE_KEY = 'beamfe_autosave_v1';
 let suppressAutosaveOnce = false;
 
 function serializeModel(){
+  syncCurrentAnalysisToStore();
+  syncProjectDetailsFromDom();
+  const active = analyses[currentAnalysisIndex] || analyses[0];
   return {
-    schema: 'beamfe-model',
-    version: 1,
-    savedAt: new Date().toISOString(),
-    beamLength: beamLengthValue,
-    tribWidth: tribWidthValue,
-    udlModeGlobal: udlModeGlobal,
-    sectionName: document.getElementById('sectionName').value,
-    propE: document.getElementById('propE').value,
-    propI: document.getElementById('propI').value,
-    allowFbSag: document.getElementById('allowFbSag').value,
-    allowFbHog: document.getElementById('allowFbHog').value,
-    allowFv: document.getElementById('allowFv').value,
-    deflLimit: document.getElementById('deflLimit').value,
-    project: {
-      name: document.getElementById('prjName').value,
-      beamId: document.getElementById('prjBeamId').value,
-      by: document.getElementById('prjBy').value,
-      checked: document.getElementById('prjChecked').value,
-      date: document.getElementById('prjDate').value
+    schema:'beamfe-model',
+    version:2,
+    savedAt:new Date().toISOString(),
+    project:{
+      name:projectDetails.name,
+      by:projectDetails.by,
+      checked:projectDetails.checked,
+      date:projectDetails.date
     },
-    supports: JSON.parse(JSON.stringify(supports)),
-    pointLoads: JSON.parse(JSON.stringify(pointLoads)),
-    udls: JSON.parse(JSON.stringify(udls))
+    activeAnalysisIndex:currentAnalysisIndex,
+    analyses:analyses.map(a=>({
+      id:a.id,name:a.name,beamId:a.beamId,
+      beamLength:a.beamLength,tribWidth:a.tribWidth,udlModeGlobal:a.udlModeGlobal,
+      sectionName:a.sectionName,propE:a.propE,propI:a.propI,
+      allowFbSag:a.allowFbSag,allowFbHog:a.allowFbHog,allowFv:a.allowFv,deflLimit:a.deflLimit,
+      supports:deepClone(a.supports),pointLoads:deepClone(a.pointLoads),udls:deepClone(a.udls)
+    })),
+    // Legacy active-model fields kept so older readers can still open the saved JSON.
+    beamLength:active?.beamLength ?? beamLengthValue,
+    tribWidth:active?.tribWidth ?? tribWidthValue,
+    udlModeGlobal:active?.udlModeGlobal ?? udlModeGlobal,
+    analysisName:active?.name ?? 'Analysis 1',
+    beamId:active?.beamId ?? 'B-1',
+    sectionName:active?.sectionName ?? document.getElementById('sectionName')?.value ?? '',
+    propE:active?.propE ?? document.getElementById('propE')?.value ?? '',
+    propI:active?.propI ?? document.getElementById('propI')?.value ?? '',
+    allowFbSag:active?.allowFbSag ?? document.getElementById('allowFbSag')?.value ?? '',
+    allowFbHog:active?.allowFbHog ?? document.getElementById('allowFbHog')?.value ?? '',
+    allowFv:active?.allowFv ?? document.getElementById('allowFv')?.value ?? '',
+    deflLimit:active?.deflLimit ?? document.getElementById('deflLimit')?.value ?? '',
+    supports:deepClone(active?.supports || supports),
+    pointLoads:deepClone(active?.pointLoads || pointLoads),
+    udls:deepClone(active?.udls || udls)
   };
 }
 
@@ -2976,61 +3529,71 @@ function applyModel(data){
   if (!data || typeof data !== 'object') return false;
   try{
     const setVal = setFieldVal;
-    setVal('beamLength', data.beamLength);
-    setVal('tribWidth', data.tribWidth);
-    setVal('sectionName', data.sectionName);
-    setVal('propE', data.propE);
-    setVal('propI', data.propI);
-    // allowFbSag/allowFbHog is the current format; a model saved before this feature only
-    // has one "allowFb" value — apply it to both, same as the symmetric-section default.
-    if (data.allowFbSag!=null || data.allowFbHog!=null){
-      setVal('allowFbSag', data.allowFbSag);
-      setVal('allowFbHog', data.allowFbHog);
-    } else if (data.allowFb!=null){
-      setVal('allowFbSag', data.allowFb);
-      setVal('allowFbHog', data.allowFb);
-    }
-    setVal('allowFv', data.allowFv);
-    setVal('deflLimit', data.deflLimit);
     if (data.project){
-      setVal('prjName', data.project.name);
-      setVal('prjBeamId', data.project.beamId);
-      setVal('prjBy', data.project.by);
-      setVal('prjChecked', data.project.checked);
-      setVal('prjDate', data.project.date);
+      projectDetails = {
+        name:String(data.project.name||''),
+        by:String(data.project.by||''),
+        checked:String(data.project.checked||''),
+        date:String(data.project.date||'')
+      };
+    } else {
+      projectDetails = {
+        name:String(data.project?.name || ''),
+        by:String(data.project?.by || ''),
+        checked:String(data.project?.checked || ''),
+        date:String(data.project?.date || '')
+      };
     }
-    if (Array.isArray(data.supports) && data.supports.length){
-      supports = data.supports.map(s=>({pos:parseFloat(s.pos)||0, type: s.type==='free'?'free':'tie'}));
+    loadProjectDetailsToDom();
+
+    const normalizeAnalysis = (a,i)=>({
+      id:String(a.id || ('analysis-'+(i+1))),
+      name:String(a.name || ('Analysis '+(i+1))),
+      beamId:String(a.beamId || ('B-'+(i+1))),
+      beamLength:parseFloat(a.beamLength)||6,
+      tribWidth:parseFloat(a.tribWidth)||1.2,
+      udlModeGlobal:a.udlModeGlobal==='area'?'area':'line',
+      sectionName:String(a.sectionName||''),
+      propE:String(a.propE!=null?a.propE:'11000'),
+      propI:String(a.propI!=null?a.propI:'51840000'),
+      allowFbSag:String(a.allowFbSag!=null?a.allowFbSag:(a.allowFb!=null?a.allowFb:'5')),
+      allowFbHog:String(a.allowFbHog!=null?a.allowFbHog:(a.allowFb!=null?a.allowFb:'5')),
+      allowFv:String(a.allowFv!=null?a.allowFv:'20'),
+      deflLimit:String(a.deflLimit!=null?a.deflLimit:'270'),
+      supports:Array.isArray(a.supports)?a.supports.map(s=>({pos:parseFloat(s.pos)||0,type:s.type==='free'?'free':'tie'})):[],
+      pointLoads:Array.isArray(a.pointLoads)?a.pointLoads.map(p=>({pos:parseFloat(p.pos)||0,mag:parseFloat(p.mag)||0})):[],
+      udls:Array.isArray(a.udls)?a.udls.map(u=>({
+        start:parseFloat(u.start)||0,end:parseFloat(u.end)||0,
+        mode:u.mode==='area'?'area':'line',
+        magStart:parseFloat(u.magStart!=null?u.magStart:u.mag)||0,
+        magEnd:parseFloat(u.magEnd!=null?u.magEnd:u.mag)||0
+      })):[],
+      lastResults:null
+    });
+
+    if (Array.isArray(data.analyses) && data.analyses.length){
+      analyses = data.analyses.map(normalizeAnalysis);
+      currentAnalysisIndex = Math.max(0,Math.min(analyses.length-1,parseInt(data.activeAnalysisIndex,10)||0));
+    } else {
+      analyses = [normalizeAnalysis({
+        id:'analysis-1',name:'Analysis 1',beamId:data.beamId || data.project?.beamId || 'B-1',
+        beamLength:data.beamLength,tribWidth:data.tribWidth,udlModeGlobal:data.udlModeGlobal,
+        sectionName:data.sectionName,propE:data.propE,propI:data.propI,
+        allowFbSag:data.allowFbSag,allowFbHog:data.allowFbHog,allowFb:data.allowFb,
+        allowFv:data.allowFv,deflLimit:data.deflLimit,
+        supports:data.supports,pointLoads:data.pointLoads,udls:data.udls
+      },0)];
+      currentAnalysisIndex=0;
     }
-    if (Array.isArray(data.pointLoads)){
-      pointLoads = data.pointLoads.map(p=>({pos:parseFloat(p.pos)||0, mag:parseFloat(p.mag)||0}));
-    }
-    if (Array.isArray(data.udls)){
-      // magStart/magEnd is the current format; fall back to a single old-style "mag" field
-      // so files saved before trapezoidal-load support still load correctly.
-      udls = data.udls.map(u=>({
-        start:parseFloat(u.start)||0, end:parseFloat(u.end)||0,
-        mode: u.mode==='area' ? 'area' : 'line', // normalized below to the universal setting
-        magStart: parseFloat(u.magStart!=null ? u.magStart : u.mag)||0,
-        magEnd: parseFloat(u.magEnd!=null ? u.magEnd : u.mag)||0
-      }));
-    }
-    // Universal UDL input mode: prefer an explicitly saved global setting; otherwise infer
-    // from the first loaded UDL, so files saved before this feature still come in cleanly —
-    // and every UDL always ends up in sync, even if an older file had mixed per-row modes.
-    if (data.udlModeGlobal === 'area' || data.udlModeGlobal === 'line'){
-      udlModeGlobal = data.udlModeGlobal;
-    } else if (udls.length){
-      udlModeGlobal = udls[0].mode;
-    }
-    udls.forEach(u=> u.mode = udlModeGlobal);
+    loadProjectDetailsToDom();
+    loadAnalysisToDom(currentAnalysisIndex);
+    renderAnalysisPicker();
     return true;
   }catch(err){
     console.error('applyModel failed', err);
     return false;
   }
 }
-
 /* ======================= EXCEL IMPORT ======================= */
 // Recognizes common column-header spellings for beam/section properties so a spreadsheet
 // doesn't have to match our field names exactly. Units in parentheses are stripped before

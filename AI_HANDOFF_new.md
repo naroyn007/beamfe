@@ -240,6 +240,41 @@ All magnitude-type drags (`udl-mag`, `udl-scale`, `pointload-mag`) share the sam
 - **Number inputs auto-select on focus** app-wide (`document.addEventListener('focus', ..., true)` + deferred `.select()` to survive Chrome's click-collapses-selection quirk) — typing immediately overwrites instead of requiring backspace first.
 - **Login screen bug fixed**: `input[type=password]` and `input[type=date]` were never included in either CSS input rule (`input[type=number], input[type=text], select{...}` and the `.license-box`-specific one) — password field rendered as an unstyled browser default, visually mismatched from the email field above it. Both now included in both rules.
 
-### Outstanding / known issues
+### Current Project Milestone — Project-Scoped Multi-Analysis COMPLETE (2026-09-19)
 
-- **GitHub connector lacks write access to this repo** (`403 Resource not accessible by integration` on `PUT contents/index.html`, read access is fine). All of the above has only been pushed via generated-file download, not committed through the connector — confirm the actual `main` branch has these changes before assuming they're live. If retrying via the connector, check the GitHub App / OAuth integration's repo permissions include "Contents: Read and write."
+**Status: Development milestone complete — ready for production promotion**
+
+Completed in `development`:
+- Project-level shared details: Project Name, Designed By, Checked By, and Date.
+- Analysis dropdown with **+ New Analysis**.
+- Each analysis independently stores its Analysis Name, Beam / Member ID, beam data, section properties, allowables, supports, point loads, UDLs, and UDL mode.
+- Switching analyses preserves shared project information and each analysis's own model data.
+- Save/Load/autosave upgraded to version 2 with backward-compatible migration.
+- Restore/autosave now captures and restores the shared project details reliably.
+- PDF generation includes all analyses in one consolidated report with per-analysis data and page numbering.
+- Each analysis has its own two-sheet report structure.
+- PDF Section 6 pagination logic and sheet-container handling were corrected during multi-analysis development.
+- PDF table headers, title accent, and PDF-only accent color picker are retained.
+- PDF header simplified to show the analysis name directly (for example, **Analysis 1**) without the redundant "Analysis:" prefix.
+- Full JavaScript syntax check passes after the final development changes.
+- `main` has not been modified.
+
+**Final development test notes:**
+- The browser/printer may still determine final physical pagination depending on print settings; the working printer-setting adjustment is accepted for this milestone.
+- Multi-analysis behavior, Restore/autosave, and PDF generation are ready for promotion from `development`.
+
+### Next Horizon — Production Promotion
+
+Before production promotion, the new **per-opening Disclaimer Acceptance Gate** is now implemented in `development`:
+- Authenticated users see the BEAM//FE Important Notice & Disclaimer before entering the app on each page opening.
+- The checkbox is reset unchecked each time the gate is shown; Continue remains disabled until actively checked.
+- Acceptance is recorded only when **Continue** is clicked.
+- Supabase development project contains `public.beamfe_legal_acceptances` with RLS; authenticated users can insert only rows whose `user_id` matches `auth.uid()`.
+- Each acceptance records `product_id`, document type/version, SHA-256 hash of the displayed disclaimer text, server timestamp, user-agent, and path.
+- License upgrade within the same open session does not unnecessarily show the disclaimer again.
+- The previous PDF footer disclaimer remains removed; the PDF remains focused on the calculation report.
+- Development DB security verified: `beamfe_legal_acceptances` is RLS-protected and `authenticated` has INSERT-only table privilege; no `anon` privilege is granted.
+- **Production deployment note:** the `beamfe_legal_acceptances` table/policy has now been replicated to the production Supabase project. A comparison of BEAM//FE-named tables confirmed the existing license/trial tables already match between development and production; the legal-acceptance table was the missing BEAM//FE table.
+
+
+Promote the tested `development` branch to production/`main` when ready. Do not make additional changes to `main` as part of this milestone.
