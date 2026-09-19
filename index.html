@@ -3666,15 +3666,6 @@ function buildPrintReportSingle(R, meta){
             <td>${fmt(u.magStart,2)} ${unit}</td><td>${fmt(u.magEnd,2)} ${unit}</td><td>${profile}</td>
             <td>${fmt(tribForRow,2)}</td></tr>`;
 
-  // Match the logo's rendered height to the company-details block so the branding reads as
-  // one balanced unit. The image width stays automatic and therefore preserves its aspect ratio.
-  root.querySelectorAll('.pr-brand-inline').forEach(brand=>{
-    const info = brand.querySelector('.pr-brand-info');
-    const logo = brand.querySelector('.pr-brand-logo img');
-    if (!info || !logo) return;
-    const infoHeight = info.getBoundingClientRect().height;
-    if (infoHeight > 0) logo.style.height = infoHeight + 'px';
-  });
         }).join('')}</tbody>
       </table>` : ''}
       ${(!R.pointLoads.length && !R.udls.length) ? '<div class="field-note">No loads defined for this analysis.</div>' : ''}
@@ -3715,6 +3706,16 @@ function buildPrintReportSingle(R, meta){
       </div>
       ${pageFooterHtml(page2Label, true)}
     </div>`;
+
+  // Match the logo to the actual four-line (or otherwise variable) company-details height.
+  // Cap it at the natural report-header scale so a long address cannot make the logo oversized.
+  root.querySelectorAll('.pr-brand-inline').forEach(brand=>{
+    const info = brand.querySelector('.pr-brand-info');
+    const logo = brand.querySelector('.pr-brand-logo img');
+    if (!info || !logo) return;
+    const infoHeight = Math.min(info.getBoundingClientRect().height, 64);
+    if (infoHeight > 0) logo.style.height = infoHeight + 'px';
+  });
 
   // Split the two logical sheets into two real print-page containers.
   // Keeping page 1 and page 2 as separate .pr-page elements prevents the browser
