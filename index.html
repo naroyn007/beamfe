@@ -1477,6 +1477,8 @@ function defaultAnalysisSnapshot(){
     allowFbHog:'5',
     allowFv:'20',
     deflLimit:'270',
+    primaryBeam:false,
+    legCapacity:'',
     supports:deepClone(supports),
     pointLoads:deepClone(pointLoads),
     udls:deepClone(udls),
@@ -1527,6 +1529,8 @@ function syncCurrentAnalysisToStore(){
   a.allowFbHog = document.getElementById('allowFbHog')?.value || '';
   a.allowFv = document.getElementById('allowFv')?.value || '';
   a.deflLimit = document.getElementById('deflLimit')?.value || '';
+  a.primaryBeam = !!document.getElementById('primaryBeamToggle')?.checked;
+  a.legCapacity = document.getElementById('legCapacity')?.value || '';
   a.supports = deepClone(supports);
   a.pointLoads = deepClone(pointLoads);
   a.udls = deepClone(udls);
@@ -1555,6 +1559,10 @@ function loadAnalysisToDom(index){
   setFieldVal('allowFbHog', a.allowFbHog);
   setFieldVal('allowFv', a.allowFv);
   setFieldVal('deflLimit', a.deflLimit);
+  const primaryToggle = document.getElementById('primaryBeamToggle');
+  if (primaryToggle) primaryToggle.checked = !!a.primaryBeam;
+  setFieldVal('legCapacity', a.legCapacity || '');
+  syncPrimaryBeamUi();
   renderAnalysisPicker();
   return true;
 }
@@ -3890,6 +3898,7 @@ function serializeModel(){
       beamLength:a.beamLength,tribWidth:a.tribWidth,udlModeGlobal:a.udlModeGlobal,
       sectionName:a.sectionName,propE:a.propE,propI:a.propI,
       allowFbSag:a.allowFbSag,allowFbHog:a.allowFbHog,allowFv:a.allowFv,deflLimit:a.deflLimit,
+      primaryBeam:!!a.primaryBeam,legCapacity:a.legCapacity||'',
       supports:deepClone(a.supports),pointLoads:deepClone(a.pointLoads),udls:deepClone(a.udls)
     })),
     // Legacy active-model fields kept so older readers can still open the saved JSON.
@@ -3905,6 +3914,8 @@ function serializeModel(){
     allowFbHog:active?.allowFbHog ?? document.getElementById('allowFbHog')?.value ?? '',
     allowFv:active?.allowFv ?? document.getElementById('allowFv')?.value ?? '',
     deflLimit:active?.deflLimit ?? document.getElementById('deflLimit')?.value ?? '',
+    primaryBeam:!!(active?.primaryBeam ?? document.getElementById('primaryBeamToggle')?.checked),
+    legCapacity:active?.legCapacity ?? document.getElementById('legCapacity')?.value ?? '',
     supports:deepClone(active?.supports || supports),
     pointLoads:deepClone(active?.pointLoads || pointLoads),
     udls:deepClone(active?.udls || udls)
@@ -3948,6 +3959,8 @@ function applyModel(data){
       allowFbHog:String(a.allowFbHog!=null?a.allowFbHog:(a.allowFb!=null?a.allowFb:'5')),
       allowFv:String(a.allowFv!=null?a.allowFv:'20'),
       deflLimit:String(a.deflLimit!=null?a.deflLimit:'270'),
+      primaryBeam:!!a.primaryBeam,
+      legCapacity:String(a.legCapacity!=null?a.legCapacity:''),
       supports:Array.isArray(a.supports)?a.supports.map(s=>({pos:parseFloat(s.pos)||0,type:s.type==='free'?'free':'tie'})):[],
       pointLoads:Array.isArray(a.pointLoads)?a.pointLoads.map(p=>({pos:parseFloat(p.pos)||0,mag:parseFloat(p.mag)||0})):[],
       udls:Array.isArray(a.udls)?a.udls.map(u=>({
@@ -3969,6 +3982,7 @@ function applyModel(data){
         sectionName:data.sectionName,propE:data.propE,propI:data.propI,
         allowFbSag:data.allowFbSag,allowFbHog:data.allowFbHog,allowFb:data.allowFb,
         allowFv:data.allowFv,deflLimit:data.deflLimit,
+        primaryBeam:data.primaryBeam,legCapacity:data.legCapacity,
         supports:data.supports,pointLoads:data.pointLoads,udls:data.udls
       },0)];
       currentAnalysisIndex=0;
