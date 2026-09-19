@@ -3030,6 +3030,8 @@ function buildPrintReportSingle(R, meta){
   const checked = projectDetails.checked || document.getElementById('prjChecked').value.trim() || '—';
   const dateVal = projectDetails.date || document.getElementById('prjDate').value;
   const analysisName = String(meta.analysisName || 'Analysis').trim() || 'Analysis';
+  const propE = String(meta.propE ?? document.getElementById('propE').value ?? '');
+  const propI = String(meta.propI ?? document.getElementById('propI').value ?? '');
   const dateDisplay = dateVal ? new Date(dateVal+'T00:00:00').toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}) : '—';
 
   const supSummary = R.supports.map((s,i)=>'S'+(i+1)+' '+(s.type==='tie'?'tie-down':'free')+' @ '+fmt(s.pos,2)+'m').join(', ');
@@ -3119,8 +3121,8 @@ function buildPrintReportSingle(R, meta){
         <thead><tr><th>Section</th><th>E</th><th>I</th><th>Allow. Sag M</th><th>Allow. Hog M</th><th>Allow. Shear</th><th>Defl. limit</th></tr></thead>
         <tbody><tr>
           <td>${esc(sectionName)}</td>
-          <td>${fmt(parseFloat(document.getElementById('propE').value)||0, 0)} MPa</td>
-          <td>${fmt(parseFloat(document.getElementById('propI').value)||0, 0)} mm\u2074</td>
+          <td>${fmt(parseFloat(propE)||0, 0)} MPa</td>
+          <td>${fmt(parseFloat(propI)||0, 0)} mm\u2074</td>
           <td>${R.FbSag ? fmt(R.FbSag,2)+' kN\u00b7m' : '—'}</td>
           <td>${R.FbHog ? fmt(R.FbHog,2)+' kN\u00b7m' : '—'}</td>
           <td>${R.Fv ? fmt(R.Fv,2)+' kN' : '—'}</td>
@@ -3217,6 +3219,8 @@ function collectAllAnalysisResults(){
           analysisName:analyses[i].name || ('Analysis '+(i+1)),
           beamId:analyses[i].beamId || ('B-'+(i+1)),
           sectionName:analyses[i].sectionName || '',
+          propE:analyses[i].propE || '',
+          propI:analyses[i].propI || '',
           analysisIndex:i
         }
       });
