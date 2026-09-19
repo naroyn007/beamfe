@@ -353,13 +353,11 @@
     letter-spacing:0.3px;color:#111827;text-transform:uppercase;}
   .pr-brand-address{color:#6b7280;white-space:pre-line;}
   .pr-brand-desc{color:#6b7280;font-style:italic;}
-  /* Natural dimensions: only the height is constrained, width follows the image's own
-     aspect ratio (no independent width cap forcing it into a fixed-ratio box) — a wide
-     wordmark, a square icon and a tall mark all render at their true proportions. The
-     generous max-width is a pure safety net for an extreme edge case, not a working
-     constraint for a normal logo. */
+  /* The logo follows the rendered height of the company-details block. Its width remains
+     automatic, so the uploaded logo keeps its original aspect ratio instead of looking
+     compressed or stretched. A max-width is retained only as an overflow safety net. */
   .pr-brand-logo{flex:0 0 auto;display:flex;align-items:flex-start;}
-  .pr-brand-logo img{display:block;width:auto;height:auto;max-height:64px;max-width:260px;object-fit:contain;}
+  .pr-brand-logo img{display:block;width:auto;height:auto;max-width:260px;object-fit:contain;}
   /* Footer: just the disclaimer (page 2 only, see pageFooterHtml) and a centered page
      number — Date now lives in the header instead. */
   .pr-footer-meta{margin-top:6px;text-align:center;}
@@ -3667,6 +3665,16 @@ function buildPrintReportSingle(R, meta){
           return `<tr><td>W${i+1}</td><td>${fmt(u.start,2)} m</td><td>${fmt(u.end,2)} m</td>
             <td>${fmt(u.magStart,2)} ${unit}</td><td>${fmt(u.magEnd,2)} ${unit}</td><td>${profile}</td>
             <td>${fmt(tribForRow,2)}</td></tr>`;
+
+  // Match the logo's rendered height to the company-details block so the branding reads as
+  // one balanced unit. The image width stays automatic and therefore preserves its aspect ratio.
+  root.querySelectorAll('.pr-brand-inline').forEach(brand=>{
+    const info = brand.querySelector('.pr-brand-info');
+    const logo = brand.querySelector('.pr-brand-logo img');
+    if (!info || !logo) return;
+    const infoHeight = info.getBoundingClientRect().height;
+    if (infoHeight > 0) logo.style.height = infoHeight + 'px';
+  });
         }).join('')}</tbody>
       </table>` : ''}
       ${(!R.pointLoads.length && !R.udls.length) ? '<div class="field-note">No loads defined for this analysis.</div>' : ''}
