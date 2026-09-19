@@ -3715,22 +3715,32 @@ function buildPrintReportSingle(R, meta){
       ${(!R.pointLoads.length && !R.udls.length) ? '<div class="field-note">No loads defined for this analysis.</div>' : ''}
 
       <div class="pr-section-title">4. Reactions</div>
+      ${{R.primaryBeam ? \`<div class="field-note" style="margin-bottom:6px;"><b>Primary Beam — Equipment Leg Check:</b> bearing reactions transfer directly to proprietary equipment legs. Leg capacity: <b>${{R.legCapacity>0 ? fmt(R.legCapacity,2)+' kN' : 'not entered'}</b>.</div>\` : ''}
       <table class="pr-table">
-        <thead><tr><th>Support</th><th>Position</th><th>Type</th><th>Reaction</th><th>Status</th></tr></thead>
-        <tbody>${R.reactions.map((r,i)=>{
+        <thead><tr><th>Support</th><th>Position</th><th>Type</th><th>Reaction</th>${{R.primaryBeam ? '<th>Leg Capacity</th><th>Utilization</th>' : ''}<th>Status</th></tr></thead>
+        <tbody>${{R.reactions.map((r,i)=>{
           if (r.liftedOff){
-            return `<tr><td>S${i+1}</td><td>${fmt(r.pos,2)} m</td><td>Free</td><td>0.00 kN</td>
-              <td><span class="pr-tag pr-tag-warn">LIFTED OFF — NO BEARING</span></td></tr>`;
+            return \`<tr><td>S${{i+1}</td><td>${{fmt(r.pos,2)} m</td><td>Free</td><td>0.00 kN</td>
+              ${{R.primaryBeam ? '<td>—</td><td>—</td>' : ''}
+              <td><span class="pr-tag pr-tag-warn">LIFTED OFF — NO BEARING</span></td></tr>\`;
           }
           const isUplift = r.R < -1e-6;
+          const legLoad = !isUplift && r.R>1e-9 ? r.R : 0;
+          const legUtil = R.primaryBeam && R.legCapacity>0 && legLoad>0 ? legLoad/R.legCapacity : null;
           let status;
-          if (r.type==='free'){
+          if (R.primaryBeam && legLoad>0 && legUtil!=null){
+            status = legUtil<=1 ? '<span class="pr-tag pr-tag-pass">OK — LEG CAPACITY</span>' : '<span class="pr-tag pr-tag-fail">FAIL — LEG CAPACITY</span>';
+          } else if (R.primaryBeam && legLoad>0 && R.legCapacity<=0){
+            status = '<span class="pr-tag pr-tag-warn">LEG CAPACITY NOT ENTERED</span>';
+          } else if (r.type==='free'){
             status = isUplift ? '<span class="pr-tag pr-tag-fail">UPLIFT — NEEDS TIE-DOWN</span>' : '<span class="pr-tag pr-tag-pass">OK — BEARING ONLY</span>';
           } else {
             status = isUplift ? '<span class="pr-tag pr-tag-warn">TIE-DOWN, '+fmt(Math.abs(r.R),2)+' kN UPLIFT</span>' : '<span class="pr-tag pr-tag-pass">OK</span>';
           }
-          return `<tr><td>S${i+1}</td><td>${fmt(r.pos,2)} m</td><td>${r.type==='tie'?'Tie-down':'Free'}</td>
-            <td>${fmt(Math.abs(r.R),2)} kN</td><td>${status}</td></tr>`;
+          return \`<tr><td>S${{i+1}</td><td>${{fmt(r.pos,2)} m</td><td>${{r.type==='tie'?'Tie-down':'Free'}</td>
+            <td>${{fmt(Math.abs(r.R),2)} kN</td>
+            ${{R.primaryBeam ? \`<td>${{R.legCapacity>0 ? fmt(R.legCapacity,2)+' kN' : '—'}</td><td>${{legUtil!=null ? fmt(legUtil*100,1)+'%' : '—'}</td>\` : ''}
+            <td>${{status}</td></tr>\`;
         }).join('')}</tbody>
       </table>
 
