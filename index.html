@@ -3030,6 +3030,7 @@ function openEditorFor(type, index, isNew, clientX, clientY){
 function openConcretePressureCalc(){
   const root = document.getElementById('floatPopup');
   const x = window.innerWidth/2, y = window.innerHeight/2;
+  const modeLabel = udlModeGlobal==='area' ? 'Area (kN/m\u00b2 \u00d7 trib.)' : 'Line (kN/m)';
   root.innerHTML = `
     <div class="float-popup" id="fpBox" style="left:${x}px; top:${y}px;">
       <div class="fp-head"><span>Concrete Pour Pressure</span><span class="fp-close" id="fpClose">✕</span></div>
@@ -3043,6 +3044,7 @@ function openConcretePressureCalc(){
           <div><label>Start (m)</label><input type="number" step="0.1" id="cc_start" value="0"></div>
         </div>
         <div class="field-note">Enter the design pressure you've already calculated (rate of placement, temperature, ACI 347 coefficients, etc.) — not computed here.</div>
+        <div class="field-note">Created as: <b style="color:var(--cyan);">${esc(modeLabel)}</b> — set beam-wide via the toggle above the schematic.</div>
         <div class="field-note" id="cc_preview"></div>
         <div class="field-note" id="cc_clipnote"></div>
         <div class="field-note" id="cc_warning" style="color:var(--red);"></div>
@@ -3145,7 +3147,7 @@ function openConcretePressureCalc(){
     const v = readInputs();
     const rows = computeLoadRows(v);
     if (!rows) return;
-    rows.forEach(r=> udls.push({start:r.start, end:r.end, mode:'area', magStart:r.magStart, magEnd:r.magEnd}));
+    rows.forEach(r=> udls.push({start:r.start, end:r.end, mode:udlModeGlobal, magStart:r.magStart, magEnd:r.magEnd}));
     closeAllPopups();
     runAnalysis();
   });
@@ -3649,15 +3651,15 @@ function buildPrintReportSingle(R, meta){
       </table>
 
       <div class="pr-section-title pr-compact-no-rule">3. Loadings</div>
-      <table class="pr-table">
+      ${R.pointLoads.length ? `<table class="pr-table">
         <thead><tr><th>Point load</th><th>Position</th><th>Magnitude</th></tr></thead>
-        <tbody>${R.pointLoads.length ? R.pointLoads.map((p,i)=>`
+        <tbody>${R.pointLoads.map((p,i)=>`
           <tr><td>P${i+1}</td><td>${fmt(p.pos,2)} m</td><td>${fmt(p.mag,2)} kN</td></tr>
-        `).join('') : '<tr><td colspan="3" style="color:#9ca3af;">None</td></tr>'}</tbody>
-      </table>
-      <table class="pr-table" style="margin-top:10px;">
+        `).join('')}</tbody>
+      </table>` : ''}
+      ${R.udls.length ? `<table class="pr-table" style="margin-top:10px;">
         <thead><tr><th>Distributed load</th><th>Start</th><th>End</th><th>Mag. @ start</th><th>Mag. @ end</th><th>Profile</th><th>Trib. Width (m)</th></tr></thead>
-        <tbody>${R.udls.length ? R.udls.map((u,i)=>{
+        <tbody>${R.udls.map((u,i)=>{
           const uniform = u.magStart===u.magEnd;
           const profile = uniform ? 'Uniform' : ((u.magStart===0||u.magEnd===0) ? 'Triangular' : 'Trapezoidal');
           const unit = u.mode==='area' ? 'kN/m\u00b2' : 'kN/m';
@@ -3665,8 +3667,9 @@ function buildPrintReportSingle(R, meta){
           return `<tr><td>W${i+1}</td><td>${fmt(u.start,2)} m</td><td>${fmt(u.end,2)} m</td>
             <td>${fmt(u.magStart,2)} ${unit}</td><td>${fmt(u.magEnd,2)} ${unit}</td><td>${profile}</td>
             <td>${fmt(tribForRow,2)}</td></tr>`;
-        }).join('') : '<tr><td colspan="7" style="color:#9ca3af;">None</td></tr>'}</tbody>
-      </table>
+        }).join('')}</tbody>
+      </table>` : ''}
+      ${(!R.pointLoads.length && !R.udls.length) ? '<div class="field-note">No loads defined for this analysis.</div>' : ''}
 
       <div class="pr-section-title">4. Reactions</div>
       <table class="pr-table">
