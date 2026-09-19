@@ -313,6 +313,24 @@ The `company-assets` Storage bucket's write/update RLS policies are **bucket-wid
 
 ---
 
+## PDF Report Header — Final Pixel Adjustments (2026-09-19)
+
+**Status: Applied in `development`.** These are the current verified pixel/layout values in `index.html` and should be preserved unless the report header is intentionally redesigned.
+
+- **Title block vertical position:** `.pr-titleblock > div:first-child` has **`padding-top: 10px`**. This moves the report title / analysis name / date block down within the header without changing the company branding block.
+- **Title-to-divider spacing:** `.pr-titleblock` uses **`padding-bottom: 6px`** before the 2px accent divider. This reduced the previous gap and keeps the logo/header visually closer to the divider.
+- **Company details ↔ logo alignment:** `.pr-brand-inline` uses **`align-items: center`**, so the logo is vertically centered against the full company-details block.
+- **Logo sizing:** the runtime logo sizing rule uses the rendered company-details height plus **28px**, capped at **58px**:
+
+  `Math.min(info.getBoundingClientRect().height + 28, 58)`
+
+  The logo keeps its natural aspect ratio; do not reintroduce percentage-based `max-height` sizing or a paired fixed width/height box, as those caused earlier alignment/rendering issues.
+- **Current header structure:** report title/date on the left; company details followed by logo on the right, all on one header row.
+
+**Verified directly from `development/index.html` on 2026-09-19.** `main` was not modified.
+
+---
+
 ## Model Summary Section Removed / Loadings Table Restructured
 
 **Status: Complete in `development`.**
