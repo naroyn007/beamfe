@@ -1149,10 +1149,16 @@ function syncProjectDetailsFromDom(){
 }
 
 function loadProjectDetailsToDom(){
-  setFieldVal('prjName', projectDetails.name);
-  setFieldVal('prjBy', projectDetails.by);
-  setFieldVal('prjChecked', projectDetails.checked);
-  setFieldVal('prjDate', projectDetails.date);
+  const fields = {
+    prjName: projectDetails.name || '',
+    prjBy: projectDetails.by || '',
+    prjChecked: projectDetails.checked || '',
+    prjDate: projectDetails.date || ''
+  };
+  Object.keys(fields).forEach(id=>{
+    const el = document.getElementById(id);
+    if (el) el.value = fields[id];
+  });
 }
 
 function syncCurrentAnalysisToStore(){
@@ -1221,6 +1227,22 @@ function renderAnalysisPicker(){
   sel.value = String(currentAnalysisIndex);
 }
 
+function watchProjectDetailsForAutosave(){
+  ['prjName','prjBy','prjChecked','prjDate'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (!el || el.dataset.projectAutosaveBound === '1') return;
+    el.dataset.projectAutosaveBound = '1';
+    el.addEventListener('input', ()=>{
+      syncProjectDetailsFromDom();
+      saveAutosave();
+    });
+    el.addEventListener('change', ()=>{
+      syncProjectDetailsFromDom();
+      saveAutosave();
+    });
+  });
+}
+
 function ensureAnalysisStore(){
   if (!analyses.length){
     analyses = [defaultAnalysisSnapshot()];
@@ -1254,6 +1276,7 @@ function addNewAnalysis(){
 }
 
 ensureAnalysisStore();
+watchProjectDetailsForAutosave();
 
 function getBeamLength(){ return beamLengthValue; }
 
