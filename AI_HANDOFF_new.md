@@ -273,6 +273,8 @@ Before production promotion, the new **per-opening Disclaimer Acceptance Gate** 
 - Each acceptance records `product_id`, document type/version, SHA-256 hash of the displayed disclaimer text, server timestamp, user-agent, and path.
 - License upgrade within the same open session does not unnecessarily show the disclaimer again.
 - The previous PDF footer disclaimer remains removed; the PDF remains focused on the calculation report.
+- Development DB security verified: `beamfe_legal_acceptances` is RLS-protected and `authenticated` has INSERT-only table privilege; no `anon` privilege is granted.
+- **Production deployment note:** the `beamfe_legal_acceptances` table/policy currently exists only in the development Supabase project. Replicate this schema/RLS/grant in the production Supabase project before promoting the disclaimer-gate code to production.
 
 
 Promote the tested `development` branch to production/`main` when ready. Do not make additional changes to `main` as part of this milestone.
